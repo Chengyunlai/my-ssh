@@ -15,6 +15,19 @@
 
 每次发布(打 `vX.Y.Z` tag)由 CI 自动打包并上传,无需自己构建。
 
+### macOS 首次打开提示「已损坏,无法打开」
+
+当前 CI 产物未做 Apple Developer 签名,下载后会被 macOS Gatekeeper 拦截,首次打开提示
+「MySSH 已损坏,无法打开」。这是未签名 + 隔离标记导致的误报,应用本身正常。安装后执行一次:
+
+```bash
+codesign --force --deep --sign - /Applications/MySSH.app
+xattr -dr com.apple.quarantine /Applications/MySSH.app
+open /Applications/MySSH.app
+```
+
+或右键「打开」→ 确认。待配置 Apple Developer ID 签名 + notarization 后,即可免去此步骤。
+
 ## 技术栈
 
 - [Electron](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/) + TypeScript
