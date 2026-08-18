@@ -84,6 +84,12 @@ export default definePlugin({
 发布市场 = 构建 `my-ssh-plug` 后把 `dist/` 部署到任意静态地址,把 `registry.json` 的
 URL 填入设置页即可;核心与市场可独立升级。
 
+当前线上市场(由 `my-ssh-plug` 仓库 GitHub Actions 自动部署到 Pages):
+
+```text
+https://chengyunlai.github.io/my-ssh-plug/registry.json
+```
+
 ## SFTP 文件传输(首个插件)
 
 连接后点「文件」标签:浏览远程目录、双击进入、上传/下载、新建目录、删除。
