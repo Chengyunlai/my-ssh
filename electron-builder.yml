@@ -5,8 +5,19 @@ directories:
 files:
   - out/**
   - package.json
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 mac:
   category: public.app-category.developer-tools
   target:
     - dmg
+win:
+  target:
+    - nsis
+linux:
+  category: Network
+  target:
+    - AppImage
+publish:
+  provider: github
+  releaseType: release
 npmRebuild: false

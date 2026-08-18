@@ -2,6 +2,19 @@
 
 开源桌面 SSH 客户端:可视化管理服务器(账号密码 / PEM 私钥),连接后内置完整桌面终端能力(真彩色、滚动回看、复制粘贴、自适应尺寸)。
 
+![License](https://img.shields.io/github/license/Chengyunlai/my-ssh)
+![Release](https://img.shields.io/github/v/release/Chengyunlai/my-ssh)
+
+## 安装
+
+从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases) 下载对应平台安装包即可:
+
+- macOS:`.dmg`
+- Windows:`.exe`(NSIS 安装器)
+- Linux:`.AppImage`
+
+每次发布(打 `vX.Y.Z` tag)由 CI 自动打包并上传,无需自己构建。
+
 ## 技术栈
 
 - [Electron](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/) + TypeScript
@@ -15,27 +28,44 @@
 ## 开发
 
 ```bash
-npm install
-npm run dev
+make install   # 安装依赖
+make dev       # 启动开发模式
 ```
 
 ## 常用命令
 
 ```bash
-npm run typecheck   # 类型检查(main + renderer)
-npm run build       # 构建到 out/
-npm run dist        # 打包 macOS dmg(dist/)
+make typecheck         # 类型检查(main + renderer)
+make build             # 构建到 out/
+make dist              # 本地打包 macOS dmg(dist/)
+make check             # 提交前自检:typecheck + build
+make release-patch     # 版本迭代:patch 并推送 tag,CI 自动打包发布
+make release-minor     # 版本迭代:minor 并推送 tag
+make release-major     # 版本迭代:major 并推送 tag
 ```
+
+版本迭代 = `make release-*` 打 tag 推送,CI 自动构建 **macOS / Windows / Linux** 三平台产物并发布到 GitHub Releases。
+
+## 贡献
+
+欢迎提交 PR。开发约定、提交规范、PR 流程与发布说明见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ## 目录结构
 
 ```text
+Makefile          # 开发命令入口(install / dev / typecheck / build / dist / release-*)
+LICENSE           # MIT 协议
+CONTRIBUTING.md   # 贡献指南(开发约定 / 提交规范 / 发布流程)
+.github/workflows/release.yml  # CI:打 tag 后自动打包并发布 GitHub Releases
 src/
   main/        # Electron 主进程:窗口、profiles 加密存储、ssh2 会话
   preload/     # contextBridge 桥接,向渲染进程暴露 window.ssh API
   renderer/    # React 界面 + xterm.js 终端
   shared/      # 主进程与渲染进程共享的类型
   renderer/src/plugins/  # 插件注册表(<id>/index.ts + 面板组件)
+docs/
+  PLUGIN.md    # 插件开发规范
+  UI.md        # UI 动效与设计规范
 ```
 
 ## 插件系统
