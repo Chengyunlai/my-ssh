@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppInfo, InstalledPlugin, MarketRegistry, StorageInfo } from '@shared/types'
 import { loadPluginStates, savePluginState, type PluginStates } from '../plugins'
 import type { MySshPlugin } from '../plugins/types'
@@ -15,6 +15,8 @@ interface Props {
 type SettingsTab = 'plugins' | 'market' | 'storage' | 'about'
 
 const MARKET_URL_KEY = 'myssh:market-url'
+/** 官方默认市场(GitHub Pages 自动部署),用户可改为自建市场地址 */
+const DEFAULT_MARKET_URL = 'https://chengyunlai.github.io/my-ssh-plug/registry.json'
 
 export default function SettingsView({
   plugins,
@@ -30,11 +32,14 @@ export default function SettingsView({
   const [cleaningPlugin, setCleaningPlugin] = useState<string | null>(null)
   const [tip, setTip] = useState('')
 
-  const [marketUrl, setMarketUrl] = useState(() => localStorage.getItem(MARKET_URL_KEY) ?? '')
+  const [marketUrl, setMarketUrl] = useState(
+    () => localStorage.getItem(MARKET_URL_KEY) ?? DEFAULT_MARKET_URL
+  )
   const [registry, setRegistry] = useState<MarketRegistry | null>(null)
   const [installed, setInstalled] = useState<InstalledPlugin[]>([])
   const [loadingMarket, setLoadingMarket] = useState(false)
   const [installing, setInstalling] = useState<string | null>(null)
+  const marketAutoLoadedRef = useRef(false)
 
   const refreshStorage = useCallback(async (): Promise<void> => {
     setStorage(await window.ssh.storageScan(plugins.map((p) => p.id)))
@@ -52,11 +57,7 @@ export default function SettingsView({
     if (tab === 'storage') void refreshStorage()
   }, [tab, refreshStorage])
 
-  useEffect(() => {
-    if (tab === 'market') void refreshInstalled()
-  }, [tab, refreshInstalled])
-
-  const loadMarket = async (): Promise<void> => {
+  const loadMarket = useCallback(async (): Promise<void> => {
     const url = marketUrl.trim()
     if (!url) {
       setTip('请先填写市场清单地址(registry.json)')
@@ -64,16 +65,27 @@ export default function SettingsView({
     }
     setLoadingMarket(true)
     try {
-      setRegistry(await window.ssh.marketFetchRegistry(url))
+      const reg = await window.ssh.marketFetchRegistry(url)
+      setRegistry(reg)
       localStorage.setItem(MARKET_URL_KEY, url)
-      setTip(`市场加载成功:共 ${(await window.ssh.marketFetchRegistry(url)).plugins.length} 个插件`)
+      setTip(`市场加载成功:共 ${reg.plugins.length} 个插件`)
       await refreshInstalled()
     } catch (err) {
       setTip(`加载市场失败:${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoadingMarket(false)
     }
-  }
+  }, [marketUrl, refreshInstalled])
+
+  useEffect(() => {
+    if (tab !== 'market') return
+    void refreshInstalled()
+    // 首次打开「插件市场」自动加载默认/上次使用的市场
+    if (!marketAutoLoadedRef.current && marketUrl.trim()) {
+      marketAutoLoadedRef.current = true
+      void loadMarket()
+    }
+  }, [tab, refreshInstalled, loadMarket, marketUrl])
 
   const installPlugin = async (id: string): Promise<void> => {
     const url = marketUrl.trim()
