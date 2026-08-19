@@ -20,11 +20,11 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases) 下载对应平台安装包即可:
+从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases) 下载对应平台安装包即可。当前最新版本 **v1.0.0**:
 
-- macOS:`.dmg`
-- Windows:`.exe`(NSIS 安装器)
-- Linux:`.AppImage`
+- macOS:[`MySSH-1.0.0-mac-arm64.dmg`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.0/MySSH-1.0.0-mac-arm64.dmg)
+- Windows:[`MySSH-1.0.0-win-x64.exe`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.0/MySSH-1.0.0-win-x64.exe)
+- Linux:[`MySSH-1.0.0-linux-x86_64.AppImage`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.0/MySSH-1.0.0-linux-x86_64.AppImage)
 
 每次发布(打 `vX.Y.Z` tag)由 CI 自动打包并上传,无需自己构建。
 
@@ -123,7 +123,7 @@ import MyPanel from './MyPanel'
 export default definePlugin({
   id: 'my-plugin',
   name: '我的插件',
-  version: '0.1.0',
+  version: '1.0.0',
   panel: { title: '标签名', Component: MyPanel }
 })
 ```
