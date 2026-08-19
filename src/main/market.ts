@@ -53,7 +53,12 @@ function pluginsRoot(): string {
 async function readUrl(url: string): Promise<Buffer> {
   if (url.startsWith('file://')) return fsp.readFile(new URL(url))
   if (url.startsWith('http://') || url.startsWith('https://')) {
-    const res = await net.fetch(url)
+    const res = await net.fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    })
     if (!res.ok) throw new Error(`下载失败:HTTP ${res.status}`)
     return Buffer.from(await res.arrayBuffer())
   }
