@@ -18,6 +18,18 @@
   <img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux" />
 </p>
 
+## 产品截图
+
+| 连接管理 | 终端会话 |
+| --- | --- |
+| ![连接管理](docs/screenshots/01-connect-form.png) | ![终端会话](docs/screenshots/02-terminal.png) |
+
+| SFTP 文件传输(在线预览 / 编辑) | 插件市场 |
+| --- | --- |
+| ![SFTP 文件传输](docs/screenshots/03-sftp-preview.png) | ![插件市场](docs/screenshots/04-plugin-market.png) |
+
+截图使用本地演示服务生成(虚拟 `/srv/demo-app` 目录),仅用于展示界面,不包含任何真实服务器信息。
+
 ## 安装
 
 从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases) 下载对应平台安装包即可。当前最新版本 **v1.0.1**:
@@ -27,6 +39,8 @@
 - Linux:[`MySSH-1.0.1-linux-x86_64.AppImage`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.1/MySSH-1.0.1-linux-x86_64.AppImage)
 
 每次发布(打 `vX.Y.Z` tag)由 CI 自动打包并上传,无需自己构建。
+
+完整的版本迭代记录见 [CHANGELOG.md](CHANGELOG.md)(开发者日志)。
 
 ### macOS 首次打开提示「已损坏,无法打开」
 
@@ -92,6 +106,7 @@ make release-major     # 版本迭代:major 并推送 tag
 ```text
 Makefile          # 开发命令入口(install / dev / typecheck / build / dist / release-*)
 LICENSE           # MIT 协议
+CHANGELOG.md      # 开发者日志:每次版本迭代的内容记录
 CONTRIBUTING.md   # 贡献指南(开发约定 / 提交规范 / 发布流程)
 .github/workflows/release.yml  # CI:打 tag 后自动打包并发布 GitHub Releases
 src/

@@ -84,6 +84,8 @@ git tag v0.1.1 && git push origin v0.1.1
 
 发布前请确认 README 中的路线图、依赖说明与本次版本一致;破坏性变更要在 Release Notes 中注明。
 
+发布前把本版本的变更整理进 [`CHANGELOG.md`](CHANGELOG.md)(开发者日志),与版本号提交一起推送。
+
 ## 安全约定
 
 - 严禁提交任何私钥、密码、`profiles.json` 等敏感数据;`*.log`、`node_modules/`、`out/`、`dist/` 已在 `.gitignore`。
