@@ -8,8 +8,11 @@ import { logError } from './logger'
 interface Session {
   client: Client
   sessionId: string
-  stream?: ClientChannel
-  cwd?: string
+  streams: Map<string, ClientChannel>
+  /** 同一 SSH 连接内 shell 计数,用于生成可读名称(终端 1 / 终端 2 …) */
+  shellSeq: number
+  /** 每个 shell 独立的 cwd */
+  cwds: Map<string, string>
   ready: boolean
 }
 
@@ -109,9 +112,9 @@ class StreamCleaner {
   }
 }
 
-/** 返回已解析到的终端当前目录;尚未收到 OSC 7 时返回 null(属正常竞态,不抛错) */
-export function getCwd(sessionId: string): string | null {
-  return sessions.get(sessionId)?.cwd ?? null
+/** 返回指定 shell 当前解析到的目录;尚未收到 OSC 7 时返回 null */
+export function getCwd(sessionId: string, shellId = 'main'): string | null {
+  return sessions.get(sessionId)?.cwds.get(shellId) ?? null
 }
 
 /** 等待 SSH 会话完全就绪(handshake 完成),避免在 ready 前打开通道 */
@@ -159,7 +162,7 @@ export function getClient(sessionId: string): Client | undefined {
 function cleanup(sessionId: string): void {
   const session = sessions.get(sessionId)
   if (session) {
-    session.stream?.end()
+    for (const stream of session.streams.values()) stream.end()
     session.client.end()
     sessions.delete(sessionId)
     closedHook?.(sessionId)
@@ -170,78 +173,143 @@ export function disconnectAll(): void {
   for (const id of [...sessions.keys()]) cleanup(id)
 }
 
+/**
+ * 为已有 SSH 会话开一个新的 shell 通道,返回 shellId。
+ * 每个 shell 拥有独立的 xterm 实例、输出流和 cwd。
+ */
+export function openShell(
+  sessionId: string,
+  webContents: WebContents,
+  cols = 80,
+  rows = 24
+): { shellId: string } | undefined {
+  const session = sessions.get(sessionId)
+  if (!session || !session.ready) return undefined
+  const shellId = randomUUID()
+  session.shellSeq++
+  setupShell(session, shellId, webContents, cols, rows, session.shellSeq)
+  return { shellId }
+}
+
+/**
+ * 关闭指定 shell。若已是最后一个 shell,则断开整个 SSH 会话。
+ * 返回 false 表示 shellId 无效。
+ */
+export function closeShell(sessionId: string, shellId: string): boolean {
+  const session = sessions.get(sessionId)
+  if (!session) return false
+  const stream = session.streams.get(shellId)
+  if (!stream) return false
+  if (session.streams.size <= 1) {
+    cleanup(sessionId)
+    return true
+  }
+  removeShell(session, shellId)
+  return true
+}
+
+/** 从 session 中摘除单个 shell,不影响 SSH 连接 */
+function removeShell(session: Session, shellId: string): void {
+  const stream = session.streams.get(shellId)
+  if (!stream) return
+  stream.end()
+  session.streams.delete(shellId)
+  session.cwds.delete(shellId)
+}
+
+/** 为 stream 绑定输出处理、注入脚本、cwd 解析和关闭处理 */
+function setupShell(
+  session: Session,
+  shellId: string,
+  webContents: WebContents,
+  cols: number,
+  rows: number,
+  shellSeq: number
+): void {
+  const sessionId = session.sessionId
+  session.shellSeq = shellSeq
+
+  session.client.shell({ term: 'xterm-256color', cols, rows }, (err, stream) => {
+    if (err) {
+      webContents.send('ssh:shell-status', { sessionId, shellId, status: 'error', message: err.message })
+      return
+    }
+    session.streams.set(shellId, stream)
+
+    webContents.send('ssh:shell-status', { sessionId, shellId, status: 'connected', name: `终端 ${shellSeq}` })
+
+    const cleaner = new StreamCleaner(INJECT_SCRIPT)
+    let oscPending = ''
+    stream.on('data', (data: Buffer) => {
+      let text = cleaner.push(data.toString('utf-8'))
+      if (text) {
+        text = oscPending + text
+        oscPending = ''
+        const cwd = extractCwd(text)
+        if (cwd) session.cwds.set(shellId, cwd)
+        let forward = text.replace(OSC7_RE, '')
+        const lastOsc = forward.lastIndexOf('\x1b]')
+        if (lastOsc !== -1 && !forward.slice(lastOsc).includes('\x07')) {
+          oscPending = forward.slice(lastOsc)
+          forward = forward.slice(0, lastOsc)
+        }
+        if (forward && !webContents.isDestroyed()) {
+          webContents.send('ssh:output', { sessionId, shellId, data: forward })
+        }
+      }
+    })
+    const flushTimer = setTimeout(() => {
+      const extra = cleaner.deactivate()
+      if (extra && !webContents.isDestroyed()) {
+        webContents.send('ssh:output', { sessionId, shellId, data: extra })
+      }
+    }, 2500)
+    stream.on('close', () => clearTimeout(flushTimer))
+    stream.write(`${INJECT_SCRIPT}\r`)
+
+    stream.on('close', () => {
+      if (!sessions.has(sessionId)) return
+      removeShell(session, shellId)
+      webContents.send('ssh:shell-status', { sessionId, shellId, status: 'closed' })
+      // 所有 shell 都关闭 = 会话结束
+      if (session.streams.size === 0) {
+        send(webContents, { sessionId, status: 'disconnected' })
+        cleanup(sessionId)
+      }
+    })
+    stream.on('error', (e: Error) => webContents.send('ssh:shell-status', { sessionId, shellId, status: 'error', message: e.message }))
+  })
+}
+
+function send(webContents: WebContents, status: SessionStatus): void {
+  if (!webContents.isDestroyed()) {
+    webContents.send('ssh:status', status)
+  }
+}
+
 export function connect(profile: Profile, webContents: WebContents): { sessionId: string } {
   const sessionId = randomUUID()
   const client = new Client()
-  sessions.set(sessionId, { client, sessionId, ready: false })
+  const session: Session = { client, sessionId, streams: new Map(), shellSeq: 0, cwds: new Map(), ready: false }
+  sessions.set(sessionId, session)
 
-  const send = (status: Omit<SessionStatus, 'sessionId'>): void => {
-    if (!webContents.isDestroyed()) {
-      webContents.send('ssh:status', { sessionId, ...status } satisfies SessionStatus)
-    }
-  }
   // 连接阶段进度:TCP -> 握手 -> 认证 -> 建立会话
   const sendProgress = (percent: number): void => {
     if (!webContents.isDestroyed()) webContents.send('ssh:progress', { sessionId, percent })
   }
 
-  send({ status: 'connecting' })
+  send(webContents, { sessionId, status: 'connecting' })
   sendProgress(8)
 
   client.on('connect', () => sendProgress(30))
   client.on('handshake', () => sendProgress(60))
 
   client.on('ready', () => {
-    const session = sessions.get(sessionId)
-    if (session) session.ready = true
+    session.ready = true
     sendProgress(85)
-    client.shell({ term: 'xterm-256color', cols: 80, rows: 24 }, (err, stream) => {
-      if (err) {
-        send({ status: 'error', message: err.message })
-        cleanup(sessionId)
-        return
-      }
-      const session = sessions.get(sessionId)
-      if (session) session.stream = stream
-
-      sendProgress(100)
-      send({ status: 'connected' })
-
-      const cleaner = new StreamCleaner(INJECT_SCRIPT)
-      let oscPending = ''
-      stream.on('data', (data: Buffer) => {
-        let text = cleaner.push(data.toString('utf-8'))
-        if (text) {
-          text = oscPending + text
-          oscPending = ''
-          const cwd = extractCwd(text)
-          if (cwd) sessions.get(sessionId)!.cwd = cwd
-          let forward = text.replace(OSC7_RE, '')
-          const lastOsc = forward.lastIndexOf('\x1b]')
-          if (lastOsc !== -1 && !forward.slice(lastOsc).includes('\x07')) {
-            oscPending = forward.slice(lastOsc)
-            forward = forward.slice(0, lastOsc)
-          }
-          if (forward && !webContents.isDestroyed()) {
-            webContents.send('ssh:output', sessionId, forward)
-          }
-        }
-      })
-      const flushTimer = setTimeout(() => {
-        const extra = cleaner.deactivate()
-        if (extra && !webContents.isDestroyed()) {
-          webContents.send('ssh:output', sessionId, extra)
-        }
-      }, 2500)
-      stream.on('close', () => clearTimeout(flushTimer))
-      stream.write(`${INJECT_SCRIPT}\r`)
-
-      stream.on('close', () => {
-        send({ status: 'disconnected' })
-        cleanup(sessionId)
-      })
-      stream.on('error', (e: Error) => send({ status: 'error', message: e.message }))
-    })
+    setupShell(session, 'main', webContents, 80, 24, 1)
+    sendProgress(100)
+    send(webContents, { sessionId, status: 'connected' })
   })
 
   client.on('error', (err) => {
@@ -250,7 +318,7 @@ export function connect(profile: Profile, webContents: WebContents): { sessionId
       `连接失败 ${profile.username}@${profile.host}:${profile.port}`,
       err.message
     )
-    send({ status: 'error', message: err.message })
+    send(webContents, { sessionId, status: 'error', message: err.message })
     cleanup(sessionId)
   })
   client.on('close', () => cleanup(sessionId))
@@ -336,12 +404,12 @@ export function testConnect(profile: Profile, webContents: WebContents): Promise
   })
 }
 
-export function sendData(sessionId: string, data: string): void {
-  sessions.get(sessionId)?.stream?.write(data)
+export function sendData(sessionId: string, shellId: string, data: string): void {
+  sessions.get(sessionId)?.streams.get(shellId)?.write(data)
 }
 
-export function resize(sessionId: string, cols: number, rows: number): void {
-  sessions.get(sessionId)?.stream?.setWindow(rows, cols, 0, 0)
+export function resize(sessionId: string, shellId: string, cols: number, rows: number): void {
+  sessions.get(sessionId)?.streams.get(shellId)?.setWindow(rows, cols, 0, 0)
 }
 
 export function disconnect(sessionId: string): void {

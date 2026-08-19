@@ -26,12 +26,22 @@ import {
 } from './plugins'
 import type { AppPanelProps, MySshPlugin, SessionPanelProps } from './plugins/types'
 
+/** 同一 SSH 连接内的一个终端子标签 */
+interface SubTab {
+  shellId: string
+  name: string
+}
+
 /** 一个会话标签:独立终端 + 面板页签,切换时保持挂载不丢缓冲 */
 interface SessionTab {
   sessionId: string
   profile: Profile
   /** 面板页签:'terminal' 或会话级插件 id */
   panelTab: string
+  /** 同一 SSH 连接内的终端子标签 */
+  subTabs: SubTab[]
+  /** 当前激活的子终端 shellId */
+  activeSubTab: string
 }
 
 const STATUS_TEXT: Record<SessionStatus['status'], string> = {
@@ -201,6 +211,42 @@ export default function App(): React.JSX.Element {
     })
   }, [])
 
+  // 监听同一 SSH 连接内的 shell 生命周期:新增 / 关闭子终端
+  useEffect(() => {
+    return window.ssh.onShellStatus((s) => {
+      if (s.status === 'connected' && s.name) {
+        setSessions((list) =>
+          list.map((t) => {
+            if (t.sessionId !== s.sessionId) return t
+            // 初始 shell 在 connect() 时已建,防重复
+            if (t.subTabs.some((st) => st.shellId === s.shellId)) return t
+            return {
+              ...t,
+              subTabs: [...t.subTabs, { shellId: s.shellId, name: s.name! }],
+              activeSubTab: s.shellId
+            }
+          })
+        )
+      } else if (s.status === 'closed') {
+        setSessions((list) =>
+          list.map((t) => {
+            if (t.sessionId !== s.sessionId) return t
+            const next = t.subTabs.filter((st) => st.shellId !== s.shellId)
+            if (next.length === 0) {
+              // 最后一个 shell 关闭 → 移除整个会话标签
+              return null as unknown as SessionTab
+            }
+            const active =
+              t.activeSubTab === s.shellId
+                ? next[Math.max(0, t.subTabs.findIndex((st) => st.shellId === s.shellId) - 1)].shellId
+                : t.activeSubTab
+            return { ...t, subTabs: next, activeSubTab: active }
+          }).filter(Boolean)
+        )
+      }
+    })
+  }, [])
+
   // 连接阶段进度:主进程按 TCP / 握手 / 认证 / 会话 阶段上报
   useEffect(() => {
     return window.ssh.onProgress((p) => {
@@ -252,7 +298,7 @@ export default function App(): React.JSX.Element {
           .map((t) => t.sessionId)
         setSessions((list) => [
           ...list.filter((t) => !deadIds.includes(t.sessionId)),
-          { sessionId, profile, panelTab: 'terminal' }
+          { sessionId, profile, panelTab: 'terminal', subTabs: [{ shellId: 'main', name: '终端 1' }], activeSubTab: 'main' }
         ])
         setStatusMap((m) => {
           const next = { ...m }
@@ -307,6 +353,25 @@ export default function App(): React.JSX.Element {
       }
     },
     [isLive]
+  )
+
+  /** 同一 SSH 连接内开新终端 */
+  const openShell = useCallback(async (sessionId: string): Promise<void> => {
+    await window.ssh.openShell(sessionId)
+    // shell-status 回调负责更新 sessions(收到 connected 时追加子标签)
+  }, [])
+
+  /** 关闭子终端;最后一个终端关闭时会话也一并移除 */
+  const closeShell = useCallback(
+    (tab: SessionTab, shellId: string): void => {
+      if (tab.subTabs.length <= 1) {
+        closeSession(tab)
+        return
+      }
+      window.ssh.closeShell(tab.sessionId, shellId)
+      // shell-status closed 回调负责更新 sessions
+    },
+    [closeSession]
   )
 
   const handleDelete = async (id: string): Promise<void> => {
@@ -569,10 +634,55 @@ export default function App(): React.JSX.Element {
                         </div>
                       )}
 
-                      {live && (
-                        <div className={`tab-pane${tab.panelTab === 'terminal' ? '' : ' hidden'}`}>
-                          <TerminalView sessionId={tab.sessionId} />
-                        </div>
+                      {live && tab.panelTab === 'terminal' && (
+                        <>
+                          <div className="sub-tabs">
+                            {tab.subTabs.map((st) => (
+                              <div
+                                key={st.shellId}
+                                className={`sub-tab${st.shellId === tab.activeSubTab ? ' active' : ''}`}
+                                onClick={() =>
+                                  setSessions((list) =>
+                                    list.map((t) =>
+                                      t.sessionId === tab.sessionId ? { ...t, activeSubTab: st.shellId } : t
+                                    )
+                                  )
+                                }
+                              >
+                                <span className="sub-tab-name">{st.name}</span>
+                                {tab.subTabs.length > 1 && (
+                                  <button
+                                    className="sub-tab-close"
+                                    title="关闭终端"
+                                    aria-label="关闭终端"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      closeShell(tab, st.shellId)
+                                    }}
+                                  >
+                                    <CloseIcon size={10} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              className="sub-tab-add"
+                              title="新建终端"
+                              aria-label="新建终端"
+                              onClick={() => void openShell(tab.sessionId)}
+                            >
+                              <AddIcon size={12} />
+                            </button>
+                          </div>
+                          {tab.subTabs.map((st) => (
+                            <div
+                              key={st.shellId}
+                              className={`tab-pane${st.shellId === tab.activeSubTab ? '' : ' hidden'}`}
+                            >
+                              <TerminalView sessionId={tab.sessionId} shellId={st.shellId} />
+                            </div>
+                          ))}
+                        </>
                       )}
                       {live &&
                         tab.panelTab === 'terminal' &&

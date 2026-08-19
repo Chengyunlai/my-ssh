@@ -21,6 +21,23 @@ export interface SessionStatus {
   message?: string
 }
 
+/** 单个 shell 的生命周期事件(同一 SSH 连接内的独立终端) */
+export interface ShellStatus {
+  sessionId: string
+  shellId: string
+  status: 'connected' | 'closed' | 'error'
+  /** connected 时的可读名称(终端 1 / 终端 2 …) */
+  name?: string
+  message?: string
+}
+
+/** ssh:output 的结构化载荷,按 shellId 区分输出来源 */
+export interface SshOutput {
+  sessionId: string
+  shellId: string
+  data: string
+}
+
 export interface SshProgress {
   /** 0-100;测试连接时为 undefined,实际连接时为对应会话 id */
   sessionId?: string
@@ -188,13 +205,19 @@ export interface SshApi {
   pickKeyFile(): Promise<{ canceled: boolean; filePath?: string }>
   connect(profile: Profile): Promise<{ sessionId: string }>
   testConnect(profile: Profile): Promise<TestConnectionResult>
-  sendData(sessionId: string, data: string): void
-  resize(sessionId: string, cols: number, rows: number): void
+  sendData(sessionId: string, shellId: string, data: string): void
+  resize(sessionId: string, shellId: string, cols: number, rows: number): void
   disconnect(sessionId: string): void
+  /** 同一 SSH 连接内开启新 shell,返回 shellId */
+  openShell(sessionId: string): Promise<{ shellId: string } | undefined>
+  /** 关闭指定 shell;最后一个 shell 关闭时断开整个会话 */
+  closeShell(sessionId: string, shellId: string): Promise<boolean>
   /** 终端当前目录;尚未解析到(OSC 7 未到达)时返回 null */
   getCwd(sessionId: string): Promise<string | null>
-  onOutput(cb: (sessionId: string, data: string) => void): () => void
+  onOutput(cb: (sessionId: string, shellId: string, data: string) => void): () => void
   onStatus(cb: (status: SessionStatus) => void): () => void
+  /** 订阅单个 shell 的生命周期(connected / closed / error) */
+  onShellStatus(cb: (status: ShellStatus) => void): () => void
   onProgress(cb: (progress: SshProgress) => void): () => void
   onReadProgress(cb: (progress: SftpReadProgress) => void): () => void
   /** 订阅应用更新状态(立即回传当前状态) */

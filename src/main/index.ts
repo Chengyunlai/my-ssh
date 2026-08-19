@@ -176,11 +176,13 @@ function registerIpc(): void {
 
   ipcMain.handle('ssh:connect', (e, profile: Profile) => ssh.connect(profile, e.sender))
   ipcMain.handle('ssh:test', (e, profile: Profile) => ssh.testConnect(profile, e.sender))
-  ipcMain.on('ssh:data', (_e, sessionId: string, data: string) => ssh.sendData(sessionId, data))
-  ipcMain.on('ssh:resize', (_e, sessionId: string, cols: number, rows: number) =>
-    ssh.resize(sessionId, cols, rows)
+  ipcMain.on('ssh:data', (_e, sessionId: string, shellId: string, data: string) => ssh.sendData(sessionId, shellId, data))
+  ipcMain.on('ssh:resize', (_e, sessionId: string, shellId: string, cols: number, rows: number) =>
+    ssh.resize(sessionId, shellId, cols, rows)
   )
   ipcMain.on('ssh:disconnect', (_e, sessionId: string) => ssh.disconnect(sessionId))
+  ipcMain.handle('ssh:open-shell', (e, sessionId: string) => ssh.openShell(sessionId, e.sender))
+  ipcMain.handle('ssh:close-shell', (_e, sessionId: string, shellId: string) => ssh.closeShell(sessionId, shellId))
   ipcMain.handle('ssh:cwd', (_e, sessionId: string) => ssh.getCwd(sessionId))
   ipcMain.on('clipboard:copy', (_e, text: string) => clipboard.writeText(text))
 

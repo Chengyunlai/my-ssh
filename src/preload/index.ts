@@ -5,8 +5,10 @@ import type {
   Profile,
   LogInfo,
   SessionStatus,
+  ShellStatus,
   UpdateState,
   SshProgress,
+  SshOutput,
   SftpDone,
   SftpEntry,
   SftpProgress,
@@ -31,13 +33,15 @@ const api: SshApi = {
   pickKeyFile: () => ipcRenderer.invoke('dialog:pickKey'),
   connect: (profile) => ipcRenderer.invoke('ssh:connect', profile),
   testConnect: (profile) => ipcRenderer.invoke('ssh:test', profile),
-  sendData: (sessionId, data) => ipcRenderer.send('ssh:data', sessionId, data),
-  resize: (sessionId, cols, rows) => ipcRenderer.send('ssh:resize', sessionId, cols, rows),
+  sendData: (sessionId, shellId, data) => ipcRenderer.send('ssh:data', sessionId, shellId, data),
+  resize: (sessionId, shellId, cols, rows) => ipcRenderer.send('ssh:resize', sessionId, shellId, cols, rows),
   disconnect: (sessionId) => ipcRenderer.send('ssh:disconnect', sessionId),
+  openShell: (sessionId) => ipcRenderer.invoke('ssh:open-shell', sessionId),
+  closeShell: (sessionId, shellId) => ipcRenderer.invoke('ssh:close-shell', sessionId, shellId),
   getCwd: (sessionId) => ipcRenderer.invoke('ssh:cwd', sessionId),
   onOutput: (cb) => {
-    const listener = (_e: Electron.IpcRendererEvent, sessionId: string, data: string): void =>
-      cb(sessionId, data)
+    const listener = (_e: Electron.IpcRendererEvent, output: SshOutput): void =>
+      cb(output.sessionId, output.shellId, output.data)
     ipcRenderer.on('ssh:output', listener)
     return () => ipcRenderer.removeListener('ssh:output', listener)
   },
@@ -45,6 +49,11 @@ const api: SshApi = {
     const listener = (_e: Electron.IpcRendererEvent, status: SessionStatus): void => cb(status)
     ipcRenderer.on('ssh:status', listener)
     return () => ipcRenderer.removeListener('ssh:status', listener)
+  },
+  onShellStatus: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, status: ShellStatus): void => cb(status)
+    ipcRenderer.on('ssh:shell-status', listener)
+    return () => ipcRenderer.removeListener('ssh:shell-status', listener)
   },
   onProgress: (cb) => {
     const listener = (_e: Electron.IpcRendererEvent, p: SshProgress): void => cb(p)

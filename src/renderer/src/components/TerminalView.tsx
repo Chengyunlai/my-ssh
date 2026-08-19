@@ -5,9 +5,10 @@ import '@xterm/xterm/css/xterm.css'
 
 interface Props {
   sessionId: string
+  shellId: string
 }
 
-export default function TerminalView({ sessionId }: Props): React.JSX.Element {
+export default function TerminalView({ sessionId, shellId }: Props): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const sizeRef = useRef<{ cols: number; rows: number } | null>(null)
 
@@ -30,7 +31,7 @@ export default function TerminalView({ sessionId }: Props): React.JSX.Element {
 
     term.open(containerRef.current!)
     fit.fit()
-    window.ssh.resize(sessionId, term.cols, term.rows)
+    window.ssh.resize(sessionId, shellId, term.cols, term.rows)
 
     const sendResize = (): void => {
       const el = containerRef.current
@@ -40,14 +41,14 @@ export default function TerminalView({ sessionId }: Props): React.JSX.Element {
       const size = { cols: term.cols, rows: term.rows }
       if (sizeRef.current && sizeRef.current.cols === size.cols && sizeRef.current.rows === size.rows) return
       sizeRef.current = size
-      window.ssh.resize(sessionId, size.cols, size.rows)
+      window.ssh.resize(sessionId, shellId, size.cols, size.rows)
     }
     const observer = new ResizeObserver(sendResize)
     observer.observe(containerRef.current!)
 
-    const inputSub = term.onData((data) => window.ssh.sendData(sessionId, data))
-    const outputSub = window.ssh.onOutput((sid, data) => {
-      if (sid === sessionId) term.write(data)
+    const inputSub = term.onData((data) => window.ssh.sendData(sessionId, shellId, data))
+    const outputSub = window.ssh.onOutput((sid, shid, data) => {
+      if (sid === sessionId && shid === shellId) term.write(data)
     })
 
     return () => {
@@ -56,7 +57,7 @@ export default function TerminalView({ sessionId }: Props): React.JSX.Element {
       observer.disconnect()
       term.dispose()
     }
-  }, [sessionId])
+  }, [sessionId, shellId])
 
   return <div ref={containerRef} className="terminal" />
 }
