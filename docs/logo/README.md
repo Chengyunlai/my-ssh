@@ -63,7 +63,9 @@ python scripts/generate_showcase.py --all-styles --logo png/<final-variant>.png
 
 应用图标与界面 logo 统一为「白底 + 黑色字形」:
 
-- `final/myssh-icon-white-1024.png` — 全出血白底主图(macOS 图标,系统自动套圆角遮罩),即 `build/icon.png`
+> ⚠️ **macOS 打包源图必须 100% 不透明**:Big Sur+ 对含透明/半透明像素的图标会跳过系统圆角(squircle)遮罩,按原图直接渲染 → 安装拖动与 Dock 栏呈直角边 / 白色毛边。`myssh-icon-white-1024.png` 是**全出血不透明白底主图(所有像素 alpha=255)**,圆角由系统运行时自动套用,**不要**在源图上预切圆角,也不要保留白色发光渐变(半透明像素)。重建命令:`node scripts/prepare-macos-icon.mjs`(或 `make icon`),校验:`node scripts/prepare-macos-icon.mjs --check`。
+
+- `final/myssh-icon-white-1024.png` — 全出血不透明白底主图(macOS 图标,系统自动套圆角遮罩),即 `build/icon.png`
 - `final/myssh-icon-white-tile-1024.png` — 白圆角磁贴版(Windows / Linux 图标、界面 logo 共用)
 - `build/icon.icns` / `build/icon.ico` / `build/icons/` 均由上述两版生成
 - 界面 logo 使用 `src/renderer/src/assets/myssh-icon-tile.png`(顶栏 / 空状态 / 关于页),不再做 CSS 反白

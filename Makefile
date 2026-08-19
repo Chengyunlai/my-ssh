@@ -1,7 +1,7 @@
 # MySSH 开发辅助命令
 # 用法: make <target>   (make help 查看全部)
 
-.PHONY: help install dev typecheck build dist clean check release-patch release-minor release-major
+.PHONY: help install dev typecheck build icon dist clean check release-patch release-minor release-major
 
 help: ## 显示所有可用命令
 	@printf 'MySSH 可用命令:\n\n'
@@ -21,7 +21,10 @@ typecheck: ## 类型检查(main + renderer)
 build: ## 构建到 out/
 	npm run build
 
-dist: ## 打包安装产物(macOS dmg,输出到 dist/)
+icon: ## 重建 macOS 打包图标(100% 不透明,修复直角边/毛边)
+	node scripts/prepare-macos-icon.mjs
+
+dist: icon ## 打包安装产物(macOS dmg,输出到 dist/)
 	npm run dist
 
 clean: ## 清理构建产物

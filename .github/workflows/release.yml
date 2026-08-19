@@ -46,5 +46,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Rebuild macOS icon assets (100% opaque)
+        if: matrix.os == 'macos-latest'
+        run: node scripts/prepare-macos-icon.mjs
+
       - name: Package & Publish to GitHub Releases
         run: npx electron-builder --publish always --${{ matrix.target }}
