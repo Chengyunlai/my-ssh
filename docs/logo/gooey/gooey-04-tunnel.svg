@@ -1,0 +1,15 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+  <defs>
+    <filter id="gref-tunnel">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -11" result="goo"/>
+      <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+    </filter>
+  </defs>
+  <g filter="url(#gref-tunnel)">
+    <circle cx="26" cy="50" r="14"/>
+    <circle cx="74" cy="50" r="14"/>
+    <rect x="32" y="42" width="36" height="16" rx="8"/>
+  </g>
+  <circle cx="50" cy="19" r="3.5"/>
+</svg>

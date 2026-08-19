@@ -2,15 +2,31 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { Attributes, FileEntry, SFTPWrapper } from 'ssh2'
-import type { WebContents } from 'electron'
+import { nativeImage, type WebContents } from 'electron'
 import type { SftpEntry } from '@shared/types'
 import { getClient, whenReady } from './ssh'
 
 const channels = new Map<string, Promise<SFTPWrapper>>()
 const transfers = new Set<string>()
 
+/** 预览读取结果缓存:同一会话内按(路径 + size + mtime)命中,重复预览不再重新下载;写回时失效 */
+interface PreviewCacheEntry {
+  key: string
+  size: number
+  mtime: number
+  result: SftpReadResult
+}
+const previewCache = new Map<string, PreviewCacheEntry>()
+const PREVIEW_CACHE_MAX_BYTES = 64 * 1024 * 1024
+let previewCacheBytes = 0
+
 /** 在线预览/编辑的读取上限:超过则截断读取并标记 */
 const MAX_PREVIEW_BYTES = 5 * 1024 * 1024
+/** pdf / office 文档预览上限(二进制解析开销大,放宽到 20MB) */
+const MAX_DOC_BYTES = 20 * 1024 * 1024
+
+/** 走二进制解析的文档扩展(docx / xlsx 等) */
+const DOC_EXTS = new Set(['docx', 'xlsx', 'xls', 'doc'])
 
 const IMAGE_MIME: Record<string, string> = {
   png: 'image/png',
@@ -21,8 +37,14 @@ const IMAGE_MIME: Record<string, string> = {
   bmp: 'image/bmp',
   svg: 'image/svg+xml',
   ico: 'image/x-icon',
-  avif: 'image/avif'
+  avif: 'image/avif',
+  tiff: 'image/tiff',
+  heic: 'image/heic',
+  heif: 'image/heif'
 }
+
+/** Chromium 不原生支持、需交给系统解码转 PNG 的图片扩展 */
+const NEEDS_DECODE = new Set(['heic', 'heif', 'tiff'])
 
 function extOf(remotePath: string): string {
   const idx = remotePath.lastIndexOf('.')
@@ -38,6 +60,52 @@ function entryType(attrs: Attributes): 'file' | 'dir' | 'link' {
 
 function send(webContents: WebContents, channel: string, payload: unknown): void {
   if (!webContents.isDestroyed()) webContents.send(channel, payload)
+}
+
+function cacheKey(sessionId: string, remotePath: string): string {
+  return `${sessionId}\u0000${remotePath}`
+}
+
+/** 缓存条目实际占用的内存(文本按字符、二进制按字节、base64 按解码后字节) */
+function resultWeight(result: SftpReadResult): number {
+  if (result.kind === 'text') return result.content?.length ?? 0
+  if (result.kind === 'office') return result.bytes?.byteLength ?? 0
+  if (result.dataUrl) return Math.ceil((result.dataUrl.length * 3) / 4)
+  return 0
+}
+
+function previewCacheGet(key: string, size: number, mtime: number): SftpReadResult | undefined {
+  const entry = previewCache.get(key)
+  if (!entry) return undefined
+  if (entry.size !== size || entry.mtime !== mtime) {
+    // 远端文件已变化:失效并回收
+    previewCache.delete(key)
+    previewCacheBytes -= resultWeight(entry.result)
+    return undefined
+  }
+  // LRU:重新插入到末尾
+  previewCache.delete(key)
+  previewCache.set(key, entry)
+  return entry.result
+}
+
+function previewCacheSet(key: string, size: number, mtime: number, result: SftpReadResult): void {
+  const weight = resultWeight(result)
+  if (weight > PREVIEW_CACHE_MAX_BYTES) return
+  const old = previewCache.get(key)
+  if (old) {
+    previewCache.delete(key)
+    previewCacheBytes -= resultWeight(old.result)
+  }
+  previewCache.set(key, { key, size, mtime, result })
+  previewCacheBytes += weight
+  while (previewCacheBytes > PREVIEW_CACHE_MAX_BYTES && previewCache.size > 1) {
+    const oldestKey = previewCache.keys().next().value
+    if (oldestKey === undefined || oldestKey === key) break
+    const oldest = previewCache.get(oldestKey)
+    previewCache.delete(oldestKey)
+    previewCacheBytes -= resultWeight(oldest!.result)
+  }
 }
 
 /**
@@ -106,11 +174,13 @@ export function list(sessionId: string, dir: string): Promise<SftpEntry[]> {
 }
 
 export interface SftpReadResult {
-  kind: 'text' | 'image' | 'binary'
+  kind: 'text' | 'image' | 'binary' | 'pdf' | 'office'
   /** kind = text 时的文件内容(UTF-8) */
   content?: string
-  /** kind = image 时的 data URL */
+  /** kind = image / pdf 时的 data URL */
   dataUrl?: string
+  /** kind = office 时的原始字节(docx / xlsx / xls / doc) */
+  bytes?: Uint8Array
   size: number
   truncated: boolean
 }
@@ -119,44 +189,102 @@ export interface SftpReadResult {
  * 读取远程文件用于预览/编辑:图片按 data URL 返回,文本按 UTF-8 返回,
  * 其余按二进制处理;超过上限只读前 5MB 并标记 truncated。
  */
-export function read(sessionId: string, remotePath: string): Promise<SftpReadResult> {
+export function read(
+  sessionId: string,
+  remotePath: string,
+  webContents: WebContents
+): Promise<SftpReadResult> {
   return getSftp(sessionId).then(
     (sftp) =>
       new Promise<SftpReadResult>((resolve, reject) => {
+        const sendProgress = (percent: number): void => {
+          if (!webContents.isDestroyed()) {
+            webContents.send('sftp:read-progress', { sessionId, remotePath, percent })
+          }
+        }
         sftp.stat(remotePath, (statErr, st) => {
           if (statErr) return reject(statErr)
           const size = st.size ?? 0
-          const truncated = size > MAX_PREVIEW_BYTES
-          const readFile = (end: number | undefined): Promise<Buffer> =>
+          const mtime = st.mtime ?? 0
+          const key = cacheKey(sessionId, remotePath)
+          const cached = previewCacheGet(key, size, mtime)
+          if (cached) {
+            sendProgress(100)
+            resolve(cached)
+            return
+          }
+          const ext = extOf(remotePath)
+          const limit =
+            ext === 'pdf' || DOC_EXTS.has(ext) || IMAGE_MIME[ext] ? MAX_DOC_BYTES : MAX_PREVIEW_BYTES
+          const truncated = size > limit
+          const readTarget = Math.max(truncated ? limit : size, 1)
+          const done = (result: SftpReadResult): void => {
+            previewCacheSet(key, size, mtime, result)
+            resolve(result)
+          }
+          const readFile = (): Promise<Buffer> =>
             new Promise((res, rej) => {
-              if (end === undefined) {
-                sftp.readFile(remotePath, {}, (err, buf) => (err ? rej(err) : res(buf)))
-              } else {
-                const chunks: Buffer[] = []
-                const stream = sftp.createReadStream(remotePath, { end })
-                stream.on('data', (c: Buffer) => chunks.push(c))
-                stream.on('error', rej)
-                stream.on('end', () => res(Buffer.concat(chunks)))
-              }
+              const chunks: Buffer[] = []
+              let received = 0
+              let lastEmit = 0
+              const stream = sftp.createReadStream(
+                remotePath,
+                truncated ? { end: limit - 1 } : {}
+              )
+              stream.on('data', (c: Buffer) => {
+                chunks.push(c)
+                received += c.length
+                const now = Date.now()
+                if (now - lastEmit >= 80 || received >= readTarget) {
+                  lastEmit = now
+                  sendProgress(Math.min(100, Math.round((received / readTarget) * 100)))
+                }
+              })
+              stream.on('error', rej)
+              stream.on('end', () => res(Buffer.concat(chunks)))
             })
-          readFile(truncated ? MAX_PREVIEW_BYTES - 1 : undefined)
+          readFile()
             .then((buf) => {
-              const ext = extOf(remotePath)
               const mime = IMAGE_MIME[ext]
               if (mime) {
-                resolve({
+                let dataUrl = `data:${mime};base64,${buf.toString('base64')}`
+                if (NEEDS_DECODE.has(ext)) {
+                  const img = nativeImage.createFromBuffer(buf)
+                if (!img.isEmpty()) {
+                    dataUrl = `data:image/png;base64,${img.toPNG().toString('base64')}`
+                  }
+                }
+                done({
                   kind: 'image',
-                  dataUrl: `data:${mime};base64,${buf.toString('base64')}`,
+                  dataUrl,
+                  size,
+                  truncated
+                })
+                return
+              }
+              if (ext === 'pdf') {
+                done({
+                  kind: 'pdf',
+                  dataUrl: `data:application/pdf;base64,${buf.toString('base64')}`,
+                  size,
+                  truncated
+                })
+                return
+              }
+              if (DOC_EXTS.has(ext)) {
+                done({
+                  kind: 'office',
+                  bytes: new Uint8Array(buf),
                   size,
                   truncated
                 })
                 return
               }
               if (buf.subarray(0, 8192).includes(0)) {
-                resolve({ kind: 'binary', size, truncated })
+                done({ kind: 'binary', size, truncated })
                 return
               }
-              resolve({ kind: 'text', content: buf.toString('utf8'), size, truncated })
+              done({ kind: 'text', content: buf.toString('utf8'), size, truncated })
             })
             .catch(reject)
         })
@@ -166,12 +294,23 @@ export function read(sessionId: string, remotePath: string): Promise<SftpReadRes
 
 /** 将文本内容写回远程文件 */
 export function write(sessionId: string, remotePath: string, content: string): Promise<void> {
+  previewCache.delete(cacheKey(sessionId, remotePath))
   return getSftp(sessionId).then(
     (sftp) =>
       new Promise<void>((resolve, reject) => {
         sftp.writeFile(remotePath, content, { encoding: 'utf8' }, (err) =>
           err ? reject(err) : resolve()
         )
+      })
+  )
+}
+
+/** 远程路径是否已存在(新建文件前防误覆盖) */
+export function stat(sessionId: string, remotePath: string): Promise<boolean> {
+  return getSftp(sessionId).then(
+    (sftp) =>
+      new Promise<boolean>((resolve) => {
+        sftp.stat(remotePath, (err) => resolve(!err))
       })
   )
 }

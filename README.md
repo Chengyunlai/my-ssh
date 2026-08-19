@@ -1,9 +1,22 @@
-# MySSH
+<p align="center">
+  <img src="docs/logo/final/myssh-icon-256.png" width="120" height="120" alt="MySSH" />
+</p>
 
-开源桌面 SSH 客户端:可视化管理服务器(账号密码 / PEM 私钥),连接后内置完整桌面终端能力(真彩色、滚动回看、复制粘贴、自适应尺寸)。
+<h1 align="center">MySSH</h1>
 
-![License](https://img.shields.io/github/license/Chengyunlai/my-ssh)
-![Release](https://img.shields.io/github/v/release/Chengyunlai/my-ssh)
+<p align="center">开源桌面 SSH 客户端:可视化管理服务器(账号密码 / PEM 私钥),内置完整桌面终端能力</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/license/Chengyunlai/my-ssh" alt="License" />
+  <img src="https://img.shields.io/github/v/release/Chengyunlai/my-ssh" alt="Release" />
+  <img src="https://img.shields.io/github/actions/workflow/status/Chengyunlai/my-ssh/release.yml?branch=master" alt="Build" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS" />
+  <img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows" />
+  <img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux" />
+</p>
 
 ## 安装
 
@@ -27,6 +40,17 @@ open /Applications/MySSH.app
 ```
 
 或右键「打开」→ 确认。待配置 Apple Developer ID 签名 + notarization 后,即可免去此步骤。
+
+## 自动更新
+
+已接入 `electron-updater`:启动时静默检查,设置页「关于 → 检查更新」可手动检查 /
+下载 / 重启安装。默认更新源为 GitHub Releases,发布流程见
+[`docs/RELEASE.md`](docs/RELEASE.md)。
+
+- 打 `vX.Y.Z` tag 或手动触发 `release` workflow,CI 自动打包并上传安装包 +
+  `latest*.yml` 更新索引
+- Windows / Linux:自动更新开箱即用
+- macOS:CI 产物未签名,暂不支持自动更新(需 Developer ID 签名),请从 Releases 手动下载
 
 ## 技术栈
 

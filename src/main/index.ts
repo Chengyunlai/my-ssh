@@ -1,15 +1,40 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, protocol } from 'electron'
-import { readFileSync } from 'node:fs'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, protocol } from 'electron'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as market from './market'
+import * as logger from './logger'
 import * as profiles from './profiles'
 import * as sftp from './sftp'
 import * as ssh from './ssh'
 import * as storage from './storage'
-import type { Profile } from '@shared/types'
+import * as updater from './updater'
+import type { Profile, UpdateState } from '@shared/types'
 import type { IpcResult } from '@shared/types'
 
 const isDev = !app.isPackaged
+const isMac = process.platform === 'darwin'
+// 统一应用名:dev 下 app.name 默认取 package.json 的 name,这里显式兜底
+// (macOS Dock/菜单栏显示名由 dev 启动脚本里的 Electron 副本 Info.plist 控制,见 scripts/dev.mjs)。
+app.setName('my-ssh')
+// 打包图标已配好(见 electron-builder.yml);这里让 dev 运行的窗口/Dock 也显示我们的 logo。
+// 运行时图标用白圆角磁贴版(dock.setIcon 直出图片不会套 macOS 圆角遮罩,必须是圆角图)。
+// Dock 用 256px 硬边磁贴(缩放毛边最小);窗口用 1024 磁贴。
+// build/ 目录不会打进安装包(files: out/**),包内直接走系统应用图标(icns 全出血由系统遮罩)。
+const appIconPath = path.join(__dirname, '../../build/icon-tile.png')
+const dockIconPath = path.join(__dirname, '../../build/icon-tile-dock.png')
+const hasAppIcon = existsSync(appIconPath)
+const hasDockIcon = existsSync(dockIconPath)
+
+// 默认 Electron 菜单(File / Edit / View / Window / Help)是典型的"Electron 味"。
+// 只保留系统级角色菜单:应用菜单(macOS)、编辑(复制/粘贴/全选)、窗口。
+function installAppMenu(): void {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: 'appMenu' } as Electron.MenuItemConstructorOptions] : []),
+    { role: 'editMenu' },
+    { role: 'windowMenu' }
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
 
 // 外部插件通过自定义协议 myssh-plugin://<id>/<version>/entry.js 加载
 protocol.registerSchemesAsPrivileged([
@@ -23,9 +48,23 @@ function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1180,
     height: 760,
+    minWidth: 860,
+    minHeight: 560,
     show: false,
     title: 'MySSH',
-    backgroundColor: '#0f1115',
+    backgroundColor: '#161616',
+    ...(hasAppIcon ? { icon: appIconPath } : {}),
+    // 原生窗口框架:macOS 用隐藏式标题栏 + 红绿灯;Windows / Linux 用系统窗口按钮覆盖层
+    ...(isMac
+      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 12 } }
+      : {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: {
+            color: '#161616',
+            symbolColor: '#fafafa',
+            height: 44
+          }
+        }),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -33,7 +72,9 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  win.on('ready-to-show', () => win.show())
+  win.on('ready-to-show', () => {
+    win.show()
+  })
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -43,14 +84,60 @@ function createWindow(): BrowserWindow {
   return win
 }
 
+installAppMenu()
+
+// 主进程未捕获异常/未处理 Promise 拒绝:记录到日志,便于排查
+process.on('uncaughtException', (err) => {
+  logger.logError(
+    'main',
+    'uncaughtException',
+    err instanceof Error ? (err.stack ?? err.message) : String(err)
+  )
+})
+process.on('unhandledRejection', (reason) => {
+  logger.logError(
+    'main',
+    'unhandledRejection',
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason)
+  )
+})
+
 function registerIpc(): void {
+  // 应用更新状态推送:渲染进程订阅后,主进程把 updater 状态转发到对应窗口
+  const updateWindows = new Set<Electron.WebContents>()
+  let updateForwarder: (() => void) | null = null
+  const forwardUpdate = (s: UpdateState): void => {
+    for (const wc of updateWindows) {
+      if (!wc.isDestroyed()) wc.send('app:update-state', s)
+    }
+  }
+  ipcMain.on('app:update-subscribe', (e) => {
+    updateWindows.add(e.sender)
+    e.sender.once('destroyed', () => updateWindows.delete(e.sender))
+    if (!updateForwarder) updateForwarder = updater.onUpdateState(forwardUpdate)
+  })
+  ipcMain.on('app:update-unsubscribe', (e) => {
+    updateWindows.delete(e.sender)
+    if (updateWindows.size === 0 && updateForwarder) {
+      updateForwarder()
+      updateForwarder = null
+    }
+  })
+  ipcMain.handle('app:update-check', () => updater.checkForUpdate())
+  ipcMain.handle('app:update-download', () => updater.downloadUpdate())
+  ipcMain.on('app:update-install', () => updater.installUpdate())
+
   // 高失败率操作用结构化结果返回,不 reject:
   // Electron 会对每个 reject 的 ipcMain.handle 打印错误日志,
   // 而会话切换/重连时的竞态失败是预期情况,不该刷屏。
-  const safeHandle = <T>(fn: () => T | Promise<T>): Promise<IpcResult<T>> =>
+  const safeHandle = <T>(channel: string, fn: () => T | Promise<T>): Promise<IpcResult<T>> =>
     Promise.resolve(fn()).then(
       (value) => ({ ok: true, value }),
-      (err) => ({ ok: false, error: err instanceof Error ? err.message : String(err) })
+      (err) => {
+        const message = err instanceof Error ? err.message : String(err)
+        logger.logError('ipc', `${channel} 失败`, message)
+        return { ok: false, error: message }
+      }
     )
 
   ipcMain.handle('profiles:list', () => profiles.listProfiles())
@@ -88,6 +175,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('ssh:connect', (e, profile: Profile) => ssh.connect(profile, e.sender))
+  ipcMain.handle('ssh:test', (e, profile: Profile) => ssh.testConnect(profile, e.sender))
   ipcMain.on('ssh:data', (_e, sessionId: string, data: string) => ssh.sendData(sessionId, data))
   ipcMain.on('ssh:resize', (_e, sessionId: string, cols: number, rows: number) =>
     ssh.resize(sessionId, cols, rows)
@@ -101,39 +189,54 @@ function registerIpc(): void {
   ipcMain.handle('storage:clean-cache', () => storage.cleanCache())
   ipcMain.handle('storage:clean-plugin', (_e, pluginId: string) => storage.cleanPlugin(pluginId))
 
-  ipcMain.handle('market:fetch-registry', (_e, url: string) =>
-    safeHandle(() => market.fetchRegistry(url))
+  ipcMain.on('log:error', (_e, tag: string, message: string, detail?: string) =>
+    logger.logError(tag, message, detail)
   )
-  ipcMain.handle('market:list-installed', () => safeHandle(() => market.listInstalled()))
+  ipcMain.handle('log:read', () => logger.readLog())
+  ipcMain.handle('log:clear', () => logger.clearLog())
+
+  ipcMain.handle('market:fetch-registry', (_e, url: string) =>
+    safeHandle('market:fetch-registry', () => market.fetchRegistry(url))
+  )
+  ipcMain.handle('market:list-installed', () =>
+    safeHandle('market:list-installed', () => market.listInstalled())
+  )
   ipcMain.handle('market:install', (_e, url: string, pluginId: string) =>
-    safeHandle(() => market.install(url, pluginId))
+    safeHandle('market:install', () => market.install(url, pluginId))
   )
 
-  ipcMain.handle('sftp:home', (_e, sessionId: string) => safeHandle(() => sftp.home(sessionId)))
+  ipcMain.handle('sftp:home', (_e, sessionId: string) =>
+    safeHandle('sftp:home', () => sftp.home(sessionId))
+  )
   ipcMain.handle('sftp:list', (_e, sessionId: string, dir: string) =>
-    safeHandle(() => sftp.list(sessionId, dir))
+    safeHandle('sftp:list', () => sftp.list(sessionId, dir))
   )
   ipcMain.handle('sftp:mkdir', (_e, sessionId: string, dir: string) =>
-    safeHandle(() => sftp.mkdir(sessionId, dir))
+    safeHandle('sftp:mkdir', () => sftp.mkdir(sessionId, dir))
   )
-  ipcMain.handle('sftp:read', (_e, sessionId: string, remotePath: string) =>
-    safeHandle(() => sftp.read(sessionId, remotePath))
+  ipcMain.handle('sftp:read', (e, sessionId: string, remotePath: string) =>
+    safeHandle('sftp:read', () => sftp.read(sessionId, remotePath, e.sender))
   )
   ipcMain.handle('sftp:write', (_e, sessionId: string, remotePath: string, content: string) =>
-    safeHandle(() => sftp.write(sessionId, remotePath, content))
+    safeHandle('sftp:write', () => sftp.write(sessionId, remotePath, content))
+  )
+  ipcMain.handle('sftp:stat', (_e, sessionId: string, remotePath: string) =>
+    safeHandle('sftp:stat', () => sftp.stat(sessionId, remotePath))
   )
   ipcMain.handle('sftp:delete', (_e, sessionId: string, target: string, isDir: boolean) =>
-    safeHandle(() => sftp.remove(sessionId, target, isDir))
+    safeHandle('sftp:delete', () => sftp.remove(sessionId, target, isDir))
   )
   ipcMain.handle('sftp:download', (e, sessionId: string, remote: string, local: string) =>
-    safeHandle(() => sftp.download(sessionId, remote, local, e.sender))
+    safeHandle('sftp:download', () => sftp.download(sessionId, remote, local, e.sender))
   )
   ipcMain.handle('sftp:upload', (e, sessionId: string, local: string, remote: string) =>
-    safeHandle(() => sftp.upload(sessionId, local, remote, e.sender))
+    safeHandle('sftp:upload', () => sftp.upload(sessionId, local, remote, e.sender))
   )
 }
 
 app.whenReady().then(() => {
+  logger.initLogger(app.getPath('userData'))
+  if (isMac && hasDockIcon) app.dock?.setIcon(dockIconPath)
   protocol.handle('myssh-plugin', (req) => {
     const url = new URL(req.url)
     const seg = url.pathname.split('/').filter(Boolean)
@@ -160,6 +263,9 @@ app.whenReady().then(() => {
   ssh.setOnSessionClosed((sessionId) => sftp.closeSftp(sessionId))
   registerIpc()
   createWindow()
+
+  // 启动时静默检查更新(仅打包版本);发现新版本后由设置页「关于」提示
+  if (updater.isUpdateSupported()) void updater.checkForUpdate()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

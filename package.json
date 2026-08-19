@@ -5,7 +5,7 @@
   "main": "out/main/index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/dev.mjs",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
@@ -33,9 +33,13 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "codemirror": "^6.0.2",
+    "dompurify": "^3.4.13",
+    "electron-updater": "^6.8.9",
+    "mammoth": "^1.12.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "ssh2": "^1.17.0"
+    "ssh2": "^1.17.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
@@ -49,7 +53,7 @@
     "typescript": "^7.0.2",
     "vite": "^7.3.6"
   },
-  "author": "Chengyunlai",
+  "author": "my-sssh",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },

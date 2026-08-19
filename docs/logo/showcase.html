@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySSH — Logo Design Exploration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: #FAFAFA;
+            color: #1A1A1A;
+            overflow-x: hidden;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 9999;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        .logo-card { transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+        .logo-card:hover { transform: translateY(-4px); }
+        .logo-canvas { position: relative; transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        .logo-aura {
+            position: absolute; inset: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+            border-radius: 50%; transform: scale(0.5); opacity: 0;
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+            filter: blur(40px); pointer-events: none;
+        }
+        .logo-card:hover .logo-aura { transform: scale(1); opacity: 1; }
+
+        .divider-line { width: 0; height: 1px; background: #1A1A1A; opacity: 0.2; transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+        .logo-card:hover .divider-line { width: 100%; }
+
+        .tracking-ultra-wide { letter-spacing: 0.2em; }
+        .text-balance { text-wrap: balance; }
+
+        .dl-link {
+            opacity: 0; transform: translateY(6px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .logo-card:hover .dl-link { opacity: 1; transform: translateY(0); }
+
+        /* Subtle logo animations (web display only) */
+        @keyframes blink { 0%, 55% { opacity: 0.9; } 56%, 100% { opacity: 0.12; } }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.8); }
+        }
+        @keyframes breathe { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+        @keyframes fan-in { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        .anim-blink { animation: blink 1.6s steps(1) infinite; }
+        .anim-pulse-dot { animation: pulse-dot 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+        .anim-breathe { animation: breathe 4s ease-in-out infinite; }
+        .anim-fan { animation: fan-in 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState } = React;
+
+    const variants = [
+        {
+            title: 'Prompt',
+            subtitle: 'Pure Geometric · Terminal Prompt',
+            color: '#111111',
+            file: 'variants/variant-01-prompt.svg',
+            philosophy: '把终端最核心的符号——> 提示符与光标块——提炼为唯一的视觉语言。圆角方框保证图标在任何尺寸下的完整性,「>」传递命令与行动,光标块暗示「等待输入、随时响应」。极简、直接、零噪音。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="16" y="16" width="68" height="68" rx="22" strokeWidth="4"/>
+                    <path d="M 39 38 L 55 50 L 39 62" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect className="anim-blink" x="60" y="44" width="7" height="12" rx="2" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Tunnel',
+            subtitle: 'Line System · SSH Tunnel',
+            color: '#0a84ff',
+            file: 'variants/variant-02-tunnel.svg',
+            philosophy: '两个终端节点之间的三条平行曲线构成 SSH 隧道,中心圆点是连接建立的那一瞬间。上下两条弱化的曲线与主曲线形成深度层次,隐喻数据在加密通道中的流动。强调「连接」这一核心行为。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="9" y="28" width="21" height="44" rx="6" strokeWidth="4"/>
+                    <rect x="70" y="28" width="21" height="44" rx="6" strokeWidth="4"/>
+                    <path d="M 30 39 Q 50 32 70 39" strokeWidth="3" opacity="0.5"/>
+                    <path d="M 30 50 Q 50 44 70 50" strokeWidth="4"/>
+                    <path d="M 30 61 Q 50 68 70 61" strokeWidth="3" opacity="0.5"/>
+                    <circle className="anim-pulse-dot" cx="50" cy="47" r="4.5" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Node Mesh',
+            subtitle: 'Node Network · Server Mesh',
+            color: '#111111',
+            file: 'variants/variant-03-node-mesh.svg',
+            philosophy: '中心带核的环代表本机,三个大小不同的卫星节点代表远程服务器,连线构成一张去中心化的网。不对称布局制造视觉张力,对应多服务器管理场景:一台客户端,接入整个世界。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <g strokeWidth="2" opacity="0.45">
+                        <path d="M 28 60 L 50 50 L 70 64"/>
+                        <path d="M 28 60 L 43 27"/>
+                        <path d="M 50 50 L 43 27"/>
+                        <path d="M 50 50 L 70 64"/>
+                    </g>
+                    <g fill="currentColor" stroke="none">
+                        <circle className="anim-breathe" cx="28" cy="60" r="4"/>
+                        <circle cx="70" cy="64" r="4"/>
+                        <circle cx="43" cy="27" r="3.5" opacity="0.75"/>
+                    </g>
+                    <circle className="anim-pulse-dot" cx="50" cy="50" r="3" fill="currentColor" stroke="none"/>
+                    <circle cx="50" cy="50" r="9" strokeWidth="4"/>
+                </svg>
+            )
+        },
+        {
+            title: 'S-Dots',
+            subtitle: 'Dot Matrix · Letter S',
+            color: '#0a84ff',
+            file: 'variants/variant-04-s-dots.svg',
+            philosophy: '用点阵在终端窗口轮廓内重建品牌字母 S——窗口暗示产品形态,点阵呼应字符终端与像素化渲染。识别是「被提示」而非「被画出」,增加记忆点。适用于 favicon 与小尺寸图标。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="16" y="14" width="68" height="72" rx="10" strokeWidth="3"/>
+                    <g fill="currentColor" stroke="none">
+                        <circle cx="44" cy="28" r="3.4"/><circle cx="54" cy="28" r="3.4"/><circle cx="64" cy="28" r="3.4"/>
+                        <circle cx="44" cy="39" r="3.4"/>
+                        <circle cx="44" cy="50" r="3.4"/><circle cx="54" cy="50" r="3.4"/><circle cx="64" cy="50" r="3.4"/>
+                        <circle cx="64" cy="61" r="3.4"/>
+                        <circle cx="44" cy="72" r="3.4"/><circle cx="54" cy="72" r="3.4"/><circle cx="64" cy="72" r="3.4"/>
+                    </g>
+                </svg>
+            )
+        },
+        {
+            title: 'Shield Chevron',
+            subtitle: 'Geometry + Negative Space · Security',
+            color: '#111111',
+            file: 'variants/variant-05-shield-chevron.svg',
+            philosophy: '盾形承载「安全」语义,内部的 > 箭头延续终端语言,两者咬合出单一焦点。圆角切割保持精致,适合强调加密与可信赖的品牌气质。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <path d="M 50 14 L 82 24 V 45 C 82 67 68 79 50 87 C 32 79 18 67 18 45 V 24 Z" strokeWidth="4" strokeLinejoin="round"/>
+                    <path d="M 37 41 L 52 50 L 37 59" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Key',
+            subtitle: 'Lines + Geometry · SSH Key',
+            color: '#0a84ff',
+            file: 'variants/variant-06-key.svg',
+            philosophy: '45° 斜置的钥匙直接指向产品核心能力——账号密码 / PEM 私钥认证。圆形匙环与直线匙身形成几何对比,斜置带来动感与辨识度,在任何尺寸下都清晰可读。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="36" cy="32" r="10" strokeWidth="4"/>
+                    <path d="M 43 39 L 68 64" strokeWidth="4" strokeLinecap="round"/>
+                    <path d="M 55 51 L 63 43" strokeWidth="4" strokeLinecap="round"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Gooey',
+            subtitle: 'Gooey Filter · Organic Connection',
+            color: '#30d158',
+            file: 'variants/variant-07-gooey.svg',
+            philosophy: '两个主体在接触点「融化」在一起,像两台主机建立连接后边界消失。有机形态与其它几何变体形成强烈反差,传递「连接即融合」的直觉感受;小卫星节点暗示会话的持续生长。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="currentColor">
+                    <defs>
+                        <filter id="goo-07">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="5.5" result="blur"/>
+                            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -11" result="goo"/>
+                            <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+                        </filter>
+                    </defs>
+                    <g filter="url(#goo-07)">
+                        <circle cx="36" cy="58" r="16"/>
+                        <circle cx="64" cy="44" r="12"/>
+                        <circle cx="68" cy="66" r="6"/>
+                    </g>
+                </svg>
+            )
+        },
+        {
+            title: 'Signal Fan',
+            subtitle: 'Radial Rays · Signal',
+            color: '#111111',
+            file: 'variants/variant-08-signal-fan.svg',
+            philosophy: '本机节点(圆点)向远程方向放射出四条长短交替的信号射线,顶端小节点代表目标服务器。不对称的扇形构图充满动能,把「建立连接」翻译成可视的传播与抵达。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="42" cy="58" r="6" fill="currentColor" stroke="none"/>
+                    <g className="anim-fan" strokeWidth="3.5" strokeLinecap="round">
+                        <line x1="47.5" y1="46.2" x2="58.1" y2="23.6"/>
+                        <line x1="53.3" y1="51.0" x2="64.5" y2="45.0"/>
+                        <line x1="55.0" y1="59.1" x2="79.8" y2="61.3"/>
+                        <line x1="51.2" y1="67.2" x2="60.4" y2="76.4"/>
+                    </g>
+                    <circle className="anim-pulse-dot" cx="58.1" cy="23.6" r="3.5" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Punched Prompt',
+            subtitle: 'Negative Space · Punched Disc',
+            color: '#0a84ff',
+            file: 'variants/variant-09-punched-prompt.svg',
+            philosophy: '实心圆盘被 > 与光标「打孔」挖空——负空间成为图形本身。这是所有方案中最有分量的一款,圆润切口保证精致度,实心圆盘在 16px favicon 下依然保有极高辨识度。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="currentColor">
+                    <defs>
+                        <mask id="punch-09">
+                            <rect width="100" height="100" fill="white"/>
+                            <path d="M 37 41 L 47 50 L 37 59" fill="none" stroke="black" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <rect x="51" y="44" width="6.5" height="12" rx="3" fill="black"/>
+                        </mask>
+                    </defs>
+                    <circle cx="50" cy="50" r="32" mask="url(#punch-09)"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Orbit',
+            subtitle: 'Layered · Concentric Orbit',
+            color: '#111111',
+            file: 'variants/variant-10-orbit.svg',
+            philosophy: '双层同心环构成稳定结构,右上角卫星与高亮弧段打破对称,暗示会话建立后持续活跃的连接。层次感与留白让它同时适用于图标与品牌字标搭配场景。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="50" cy="50" r="30" strokeWidth="1.5" opacity="0.4"/>
+                    <circle cx="50" cy="50" r="21" strokeWidth="3.5"/>
+                    <circle cx="50" cy="50" r="5.5" fill="currentColor" stroke="none"/>
+                    <circle className="anim-pulse-dot" cx="72.3" cy="29.9" r="5" fill="currentColor" stroke="none"/>
+                    <path d="M 72.3 29.9 A 30 30 0 0 1 79.3 43.8" strokeWidth="3.5" strokeLinecap="round" opacity="0.65"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Window',
+            subtitle: 'Product Metaphor · macOS Native',
+            color: '#0a84ff',
+            file: 'variants/variant-11-window.svg',
+            philosophy: '直接复刻产品形态:圆角终端窗口、左上角三颗红绿灯(与 docs/UI.md 的 macOS 原生设计一致)、窗内的 > 与光标。对现有用户而言这是最「自解释」的方案,也最适合作为应用图标。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="14" y="18" width="72" height="64" rx="14" strokeWidth="4"/>
+                    <g fill="currentColor" stroke="none">
+                        <circle cx="27" cy="32" r="3" opacity="0.95"/>
+                        <circle cx="39" cy="32" r="3" opacity="0.65"/>
+                        <circle cx="51" cy="32" r="3" opacity="0.4"/>
+                    </g>
+                    <path d="M 27 50 L 35 56 L 27 62" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect className="anim-blink" x="39" y="49" width="6" height="14" rx="2" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Chevron Link',
+            subtitle: 'Geometric · Bidirectional Link',
+            color: '#111111',
+            file: 'variants/variant-12-chevron-link.svg',
+            philosophy: '两个对向的 > 箭头在圆环内隔空相对,构成「双向连接」的语义:本地与远程、上传与下载、命令与回显。极简对称,稳定且有秩序感,适合多尺寸应用。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="50" cy="50" r="33" strokeWidth="3.5"/>
+                    <path d="M 44 38 L 36 50 L 44 62" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M 56 38 L 64 50 L 56 62" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            )
+        }
+    ];
+
+        const geometry = [
+        {
+            title: 'Golden Angle',
+            subtitle: 'Golden Angle · 137.5° Circle Division',
+            color: '#111111',
+            file: 'geometry/geo-01-golden-angle.svg',
+            philosophy: '一条半径按黄金角 137.5° 把圆分成两段弧:222.5° : 137.5° = φ。圆、半径、弧全部来自同一次尺规作图——没有自由曲线,只有圆规能画出的东西。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="50" cy="50" r="34" strokeWidth="3"/>
+                    <line x1="50" y1="50" x2="84" y2="50" strokeWidth="3"/>
+                    <line x1="50" y1="50" x2="24.93" y2="72.97" strokeWidth="3"/>
+                    <path d="M 84 50 A 34 34 0 0 1 24.93 72.97" strokeWidth="4.5" strokeLinecap="round"/>
+                    <path d="M 84 50 A 34 34 0 0 0 24.93 72.97" strokeWidth="2.5" opacity="0.35"/>
+                    <circle className="anim-pulse-dot" cx="24.93" cy="72.97" r="2.5" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Vesica',
+            subtitle: 'Vesica Piscis · Circle Intersection',
+            color: '#0a84ff',
+            file: 'geometry/geo-02-vesica.svg',
+            philosophy: '两个相等的圆,圆心恰好落在对方圆周上;交叠出的透镜是经典尺规图形,也是「连接」最古老的几何表达。两个焦点小圆标记两端节点,其余全部可推导。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="35" cy="50" r="30" strokeWidth="2" opacity="0.35"/>
+                    <circle cx="65" cy="50" r="30" strokeWidth="2" opacity="0.35"/>
+                    <path d="M 50 24.02 A 30 30 0 1 0 50 75.98 A 30 30 0 1 0 50 24.02 Z" strokeWidth="3.5" strokeLinejoin="round"/>
+                    <g fill="currentColor" stroke="none">
+                        <circle className="anim-pulse-dot" cx="35" cy="50" r="2.5"/>
+                        <circle cx="65" cy="50" r="2.5"/>
+                    </g>
+                </svg>
+            )
+        },
+        {
+            title: 'Spiral',
+            subtitle: 'Fibonacci Spiral · φ Construction',
+            color: '#111111',
+            file: 'geometry/geo-03-spiral.svg',
+            philosophy: '由 5、5、10、15、25、40 六个斐波那契正方形逐段旋转生成,每段圆弧半径等于所在正方形边长,首尾相切。螺旋是 φ 的轨迹:生长、流动、向外连接。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <path d="M 74.77 64.15 A 7.08 7.08 0 0 1 67.69 57.08 M 67.69 57.08 A 7.08 7.08 0 0 1 60.62 64.15 M 60.62 64.15 A 14.15 14.15 0 0 1 74.77 78.31 M 74.77 78.31 A 21.23 21.23 0 0 1 96 57.08 M 96 57.08 A 35.38 35.38 0 0 1 60.62 21.69 M 60.62 21.69 A 56.62 56.62 0 0 1 4 78.31" strokeWidth="4" strokeLinecap="round"/>
+                    <circle className="anim-pulse-dot" cx="23.08" cy="57.52" r="3.5" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Rings',
+            subtitle: 'Concentric Rings · 1 : φ : φ²',
+            color: '#0a84ff',
+            file: 'geometry/geo-04-rings.svg',
+            philosophy: '三圈同心环半径按 1 : φ : φ²(16.5 / 26.7 / 43.2),一条 137.5° 黄金角半径切过三环,并点亮中环的一段弧。比例即结构:每一圈来自同一个数。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="50" cy="50" r="43.2" strokeWidth="2" opacity="0.35"/>
+                    <circle cx="50" cy="50" r="26.7" strokeWidth="2.5"/>
+                    <circle cx="50" cy="50" r="16.5" strokeWidth="4.5"/>
+                    <circle cx="50" cy="50" r="3" fill="currentColor" stroke="none"/>
+                    <line x1="50" y1="50" x2="93.2" y2="50" strokeWidth="3" opacity="0.55"/>
+                    <line x1="50" y1="50" x2="18.14" y2="79.19" strokeWidth="3" opacity="0.55"/>
+                    <path className="anim-fan" d="M 76.7 50 A 26.7 26.7 0 0 1 30.27 69.95" strokeWidth="4" strokeLinecap="round"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Dial',
+            subtitle: 'Circle Division · Rational Grid + Golden Arc',
+            color: '#111111',
+            file: 'geometry/geo-05-dial.svg',
+            philosophy: '圆周被 12 条理性刻度(30° 等分)划分,内圈刻度线连成构造圆,其中一段弧却按黄金角 137.5° 截取。理性网格里嵌入一条无理比例——秩序中的意外。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="50" cy="50" r="34" strokeWidth="3"/>
+                    <circle cx="50" cy="50" r="27" strokeWidth="1" opacity="0.3"/>
+                    <g strokeWidth="2.5" opacity="0.6">
+<line x1="77" y1="50" x2="84" y2="50" strokeWidth="2.5" opacity="0.6"/>
+<line x1="76.41" y1="65.25" x2="79.44" y2="67" strokeWidth="2.5" opacity="0.6"/>
+<line x1="63.5" y1="73.38" x2="67" y2="79.44" strokeWidth="2.5" opacity="0.6"/>
+<line x1="50" y1="80.5" x2="50" y2="84" strokeWidth="2.5" opacity="0.6"/>
+<line x1="36.5" y1="73.38" x2="33" y2="79.44" strokeWidth="2.5" opacity="0.6"/>
+<line x1="23.59" y1="65.25" x2="20.56" y2="67" strokeWidth="2.5" opacity="0.6"/>
+<line x1="23" y1="50" x2="16" y2="50" strokeWidth="2.5" opacity="0.6"/>
+<line x1="23.59" y1="34.75" x2="20.56" y2="33" strokeWidth="2.5" opacity="0.6"/>
+<line x1="36.5" y1="26.62" x2="33" y2="20.56" strokeWidth="2.5" opacity="0.6"/>
+<line x1="50" y1="19.5" x2="50" y2="16" strokeWidth="2.5" opacity="0.6"/>
+<line x1="63.5" y1="26.62" x2="67" y2="20.56" strokeWidth="2.5" opacity="0.6"/>
+<line x1="76.41" y1="34.75" x2="79.44" y2="33" strokeWidth="2.5" opacity="0.6"/>
+                    </g>
+                    <path d="M 84 50 A 34 34 0 0 1 24.93 72.97" strokeWidth="4.5" strokeLinecap="round"/>
+                    <circle className="anim-pulse-dot" cx="50" cy="50" r="3" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Node',
+            subtitle: 'Circle Overlap · 1/φ Scaled Lens',
+            color: '#0a84ff',
+            file: 'geometry/geo-06-node.svg',
+            philosophy: '主圆与半径为其 1/φ 的卫星圆交叠,重叠透镜被实心点亮,透镜中心的小圆点标记连接点。大小、距离都服从同一比例:抽象,但每一步都可推导。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <circle cx="56" cy="50" r="26" strokeWidth="2" opacity="0.35"/>
+                    <circle cx="30" cy="50" r="16" strokeWidth="2" opacity="0.35"/>
+                    <path d="M 41.72 34.87 A 26 26 0 0 0 41.72 65.13 A 16 16 0 0 1 41.72 34.87 Z" strokeWidth="3" strokeLinejoin="round"/>
+                    <circle cx="56" cy="50" r="2.5" fill="currentColor" stroke="none" opacity="0.5"/>
+                    <circle className="anim-pulse-dot" cx="34.92" cy="50" r="2.5" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        }
+    ];
+
+    const structured = [
+        {
+            title: 'Flow Lock',
+            subtitle: 'Flow Diagram · Client → Lock → Server',
+            color: '#111111',
+            file: 'structured/struct-01-flow-lock.svg',
+            philosophy: '一张直白的连接流程图:左侧终端 → 中间的加密锁 → 右侧服务器,数据流方向一读即懂。每个元素各司其职(输入、加密、接收),逻辑链完整闭合,是「SSH 做了什么」的可视化。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="10" y="30" width="22" height="40" rx="5" strokeWidth="3.5"/>
+                    <path d="M 13 39 L 19 44 L 13 49" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.85"/>
+                    <line x1="32" y1="50" x2="42" y2="50" strokeWidth="3"/>
+                    <line x1="58" y1="50" x2="68" y2="50" strokeWidth="3"/>
+                    <path d="M 45 47 V 43 A 6 6 0 0 1 57 43 V 47" strokeWidth="3.5" strokeLinecap="round"/>
+                    <rect x="43" y="47" width="16" height="12" rx="3.5" strokeWidth="3.5"/>
+                    <circle className="anim-pulse-dot" cx="51" cy="53" r="2" fill="currentColor" stroke="none"/>
+                    <rect x="68" y="30" width="22" height="40" rx="5" strokeWidth="3.5"/>
+                    <line x1="75" y1="39" x2="87" y2="39" strokeWidth="3" opacity="0.85"/>
+                    <line x1="75" y1="50" x2="87" y2="50" strokeWidth="3" opacity="0.5"/>
+                    <line x1="75" y1="61" x2="87" y2="61" strokeWidth="3" opacity="0.85"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Circuit',
+            subtitle: 'Circuit Board · Engineered System',
+            color: '#0a84ff',
+            file: 'structured/struct-02-circuit.svg',
+            philosophy: '中央芯片(带着终端提示符)向四角与上下引出六条正交走线,终点是连接焊盘。直角、对称、可数——完全工程化的系统感,暗示协议、握手与稳定的底层机制。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <g strokeWidth="2.5">
+                        <path d="M 32 44 L 24 44 V 28 L 18 28"/>
+                        <path d="M 68 44 L 76 44 V 28 L 82 28"/>
+                        <path d="M 32 56 L 24 56 V 72 L 18 72"/>
+                        <path d="M 68 56 L 76 56 V 72 L 82 72"/>
+                        <path d="M 50 32 V 22"/>
+                        <path d="M 50 68 V 78"/>
+                    </g>
+                    <rect x="32" y="32" width="36" height="36" rx="9" strokeWidth="3.5"/>
+                    <path d="M 40 46 L 47 50 L 40 54" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect x="51" y="46.5" width="5" height="7" rx="1.5" fill="currentColor" stroke="none"/>
+                    <g fill="currentColor" stroke="none">
+                        <circle className="anim-pulse-dot" cx="18" cy="28" r="3"/>
+                        <circle cx="82" cy="28" r="3"/>
+                        <circle cx="18" cy="72" r="3"/>
+                        <circle cx="82" cy="72" r="3"/>
+                        <circle cx="50" cy="22" r="3"/>
+                        <circle cx="50" cy="78" r="3"/>
+                    </g>
+                </svg>
+            )
+        },
+        {
+            title: 'Terminal Window',
+            subtitle: 'Product UI · Window Structure',
+            color: '#111111',
+            file: 'structured/struct-03-terminal-window.svg',
+            philosophy: '直接照搬产品真实界面:标题栏、红绿灯、> 提示符、光标与两行输出。结构就是功能本身,任何用户都能立刻读出「这是一个终端」。逻辑最直白的一版。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="14" y="14" width="72" height="72" rx="12" strokeWidth="3.5"/>
+                    <line x1="14" y1="30" x2="86" y2="30" strokeWidth="2.5" opacity="0.4"/>
+                    <g fill="currentColor" stroke="none">
+                        <circle cx="24" cy="22" r="2.5" opacity="0.95"/>
+                        <circle cx="32" cy="22" r="2.5" opacity="0.65"/>
+                        <circle cx="40" cy="22" r="2.5" opacity="0.4"/>
+                    </g>
+                    <path d="M 22 47 L 29 52 L 22 57" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect className="anim-blink" x="33" y="48.5" width="5" height="7" rx="1.5" fill="currentColor" stroke="none"/>
+                    <line x1="22" y1="68" x2="48" y2="68" strokeWidth="3" opacity="0.45"/>
+                    <line x1="22" y1="75" x2="36" y2="75" strokeWidth="2.5" opacity="0.25"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Hexagon',
+            subtitle: 'Systematic Geometry · Structured Core',
+            color: '#0a84ff',
+            file: 'structured/struct-04-hexagon.svg',
+            philosophy: '正六边形代表稳定与规则,内部 > 光标是功能中心,顶部顶点圆点是唯一的对外接口。几何系统、层级分明:一个核心、一个入口。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <polygon points="50,16 82,33 82,67 50,84 18,67 18,33" strokeWidth="3.5" strokeLinejoin="round"/>
+                    <path d="M 35 45 L 48 50 L 35 55" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect x="52" y="46.5" width="6" height="7" rx="1.5" fill="currentColor" stroke="none"/>
+                    <circle className="anim-pulse-dot" cx="50" cy="16" r="3" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Keycap',
+            subtitle: 'Hardware · Tactile Key',
+            color: '#111111',
+            file: 'structured/struct-05-keycap.svg',
+            philosophy: '一枚实体的键盘键帽,顶面刻着 > 与光标。硬件触感让「命令行」变得具体可握,梯形底座暗示机械结构。把抽象协议还原成一件看得见摸得着的物件。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="20" y="24" width="60" height="44" rx="9" strokeWidth="3.5"/>
+                    <path d="M 24 68 L 76 68" strokeWidth="3.5" opacity="0.4"/>
+                    <path d="M 24 68 L 20 76 L 80 76 L 76 68" strokeWidth="3" opacity="0.3" strokeLinejoin="round"/>
+                    <path d="M 36 40 L 45 45 L 36 50" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <rect x="49" y="41.5" width="5.5" height="7" rx="1.5" fill="currentColor" stroke="none"/>
+                </svg>
+            )
+        },
+        {
+            title: 'Server Rack',
+            subtitle: 'Infrastructure · Rack Stack',
+            color: '#0a84ff',
+            file: 'structured/struct-06-server-rack.svg',
+            philosophy: '三台堆叠的机架单元:上下两台是带状态灯与槽位的服务器,中间一台是带 > 提示符的终端。一主一从的结构叙事:在服务器群中操作终端。',
+            Component: () => (
+                <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor">
+                    <rect x="20" y="16" width="60" height="18" rx="4" strokeWidth="3"/>
+                    <rect x="20" y="41" width="60" height="18" rx="4" strokeWidth="3"/>
+                    <rect x="20" y="66" width="60" height="18" rx="4" strokeWidth="3"/>
+                    <g fill="currentColor" stroke="none">
+                        <circle cx="30" cy="25" r="2.2" opacity="0.9"/>
+                        <circle className="anim-pulse-dot" cx="30" cy="50" r="2.2" opacity="0.9"/>
+                        <circle cx="30" cy="75" r="2.2" opacity="0.9"/>
+                    </g>
+                    <line x1="38" y1="25" x2="56" y2="25" strokeWidth="2.5" opacity="0.5"/>
+                    <path d="M 40 46 L 46 50 L 40 54" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <line x1="38" y1="75" x2="56" y2="75" strokeWidth="2.5" opacity="0.5"/>
+                </svg>
+            )
+        }
+    ];
+
+const LogoCard = ({ logo }) => (
+        <div className="flex flex-col items-center logo-card cursor-pointer">
+            <div className="w-64 h-64 mb-10 flex items-center justify-center relative">
+                {logo.selected && (
+                    <span className="absolute top-2 right-2 z-20 font-mono text-[10px] tracking-widest uppercase bg-[#1A1A1A] text-white rounded-full px-3 py-1">
+                        定稿 · Selected
+                    </span>
+                )}
+                <div className="logo-aura"></div>
+                <div className="w-32 h-32 relative z-10 logo-canvas" style={{ color: logo.color }}>
+                    <logo.Component />
+                </div>
+            </div>
+            <div className="text-center w-full px-4">
+                <h2 className="text-xl font-medium tracking-wider mb-2 uppercase">{logo.title}</h2>
+                <h3 className="text-xs font-mono opacity-50 tracking-widest mb-6">{logo.subtitle}</h3>
+                <p className="text-sm leading-relaxed opacity-70 text-left font-light text-balance">{logo.philosophy}</p>
+            </div>
+            <a href={logo.file} download
+               className="dl-link mt-6 font-mono text-[11px] tracking-widest uppercase border border-[#1A1A1A]/20 rounded-full px-5 py-2 hover:bg-[#1A1A1A] hover:text-white transition-colors duration-300">
+                下载 SVG
+            </a>
+            <div className="divider-line mt-8 mx-auto"></div>
+        </div>
+    );
+
+    const Section = ({ num, title, note, items }) => (
+        <div className="w-full max-w-7xl mb-32">
+            <div className="text-center mb-16">
+                <p className="font-mono text-xs opacity-40 uppercase tracking-ultra-wide mb-3">{num}</p>
+                <h2 className="text-2xl font-light tracking-wider uppercase mb-2">{title}</h2>
+                <p className="text-xs opacity-40 font-light">{note}</p>
+                <div className="w-12 h-[1px] bg-[#1A1A1A] mx-auto opacity-30 mt-6"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16">
+                {items.map((logo, i) => <LogoCard key={i} logo={logo} />)}
+            </div>
+        </div>
+    );
+
+    const LogoShowcase = () => (
+        <div className="min-h-screen flex flex-col items-center py-20 px-6">
+
+            <div className="text-center mb-24 max-w-3xl">
+                <h1 className="text-6xl md:text-7xl font-extralight tracking-wider mb-6">MySSH</h1>
+                <p className="font-mono text-xs opacity-40 uppercase tracking-ultra-wide mb-8">
+                    开源桌面 SSH 客户端 · Secure Connection
+                </p>
+                <div className="w-12 h-[1px] bg-[#1A1A1A] mx-auto opacity-30"></div>
+            </div>
+
+            <Section num="01" title="Geometric Construction" note="当前方向 · 黄金比例 / 分圆 · Golden ratio & circle division" items={geometry} />
+            <Section num="02" title="Structured Logic" note="探索档案 · 流程 / 电路 / 界面 / 硬件" items={structured} />
+            <Section num="03" title="Core Directions" note="探索档案 · 几何 / 点阵 / 线条 / 节点网络" items={variants.slice(0, 6)} />
+            <Section num="04" title="Additional Directions" note="探索档案 · 有机 / 放射 / 负空间 / 分层 / 产品隐喻 / 双向" items={variants.slice(6, 12)} />
+
+            <div className="max-w-3xl w-full mb-24">
+                <div className="text-center mb-10">
+                    <h2 className="text-2xl font-light tracking-wider uppercase mb-3">Showcase Backgrounds</h2>
+                    <p className="font-mono text-xs opacity-40 uppercase tracking-ultra-wide">Nano Banana · 12 Professional Styles</p>
+                    <div className="w-12 h-[1px] bg-[#1A1A1A] mx-auto opacity-30 mt-8"></div>
+                </div>
+                <p className="text-sm leading-relaxed opacity-60 text-center font-light text-balance max-w-xl mx-auto">
+                    选定方向后,可基于 logo-generator-skill 的 <span className="font-mono">references/background_styles.md</span>
+                    提供 12 种专业背景风格(void / frosted / fluid / editorial / swiss_flat 等)。
+                    生成需要 Gemini API Key(Nano Banana),配置到 <span className="font-mono">.env</span> 后运行
+                    <span className="font-mono">scripts/generate_showcase.py --all-styles</span> 即可产出展示图并集成到此页面。
+                </p>
+            </div>
+
+            <div className="max-w-2xl text-center">
+                <p className="font-mono text-xs opacity-40 uppercase tracking-ultra-wide leading-loose">
+                    Generated with Logo Generator<br/>2026
+                </p>
+            </div>
+
+        </div>
+    );
+
+    ReactDOM.render(<LogoShowcase />, document.getElementById('root'));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+  <g stroke-width="2" opacity="0.45">
+    <path d="M 28 60 L 50 50 L 70 64"/>
+    <path d="M 28 60 L 43 27"/>
+    <path d="M 50 50 L 43 27"/>
+    <path d="M 50 50 L 70 64"/>
+  </g>
+  <g fill="currentColor" stroke="none">
+    <circle cx="28" cy="60" r="4"/>
+    <circle cx="70" cy="64" r="4"/>
+    <circle cx="43" cy="27" r="3.5" opacity="0.75"/>
+  </g>
+  <circle cx="50" cy="50" r="9" stroke-width="4"/>
+  <circle cx="50" cy="50" r="3" fill="currentColor" stroke="none"/>
+</svg>

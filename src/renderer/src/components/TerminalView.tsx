@@ -12,15 +12,17 @@ export default function TerminalView({ sessionId }: Props): React.JSX.Element {
   const sizeRef = useRef<{ cols: number; rows: number } | null>(null)
 
   useEffect(() => {
+    // 终端配色跟随设计 Token(:root CSS 变量),避免两处维护
+    const cs = getComputedStyle(document.documentElement)
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: 'Menlo, Monaco, "SF Mono", monospace',
       scrollback: 5000,
       theme: {
-        background: '#0f1115',
-        foreground: '#e6e6e6',
-        cursor: '#ffcc66'
+        background: cs.getPropertyValue('--terminal-bg').trim() || '#202329',
+        foreground: cs.getPropertyValue('--text').trim() || '#f2f2f4',
+        cursor: cs.getPropertyValue('--warn').trim() || '#ffd60a'
       }
     })
     const fit = new FitAddon()

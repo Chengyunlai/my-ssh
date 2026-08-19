@@ -15,6 +15,10 @@ definePlugin({
   version: '1.0.0',                 // semver
   description: '一句话说明功能',
   author: 'MySSH',                  // 可选
+  category: 'terminal',             // 分类 id(官方分类表,见 §5)
+  minAppVersion: '0.1.0',           // 最低兼容 MySSH 版本(semver)
+  maxAppVersion: '0.2.0',           // 可选:最高兼容 MySSH 版本
+  official: true,                   // 官方标记:内置可直接声明;外部插件以 registry 盖章为准
   builtin: true,                    // 内置插件标记(外部插件置 false)
   defaultEnabled: true,             // 首次启动默认状态,缺省为启用
   panel: {
@@ -58,8 +62,11 @@ src/
     index.ts             # definePlugin({...}) 入口,默认导出
     CommandBar.tsx       # 组件
     data.ts              # 静态数据
-    manifest.json        # id / name / version / description / author / defaultEnabled
-scripts/build.mjs        # esbuild 打包 → dist/<id>/entry.js + dist/registry.json(含 sha256)
+    manifest.json        # id / name / version / description / author / category / minAppVersion / maxAppVersion / official / defaultEnabled
+official.json            # 官方白名单:构建时对白名单插件盖章 official: true
+scripts/
+  build.mjs              # esbuild 打包 → dist/<id>/entry.js + dist/registry.json(含 sha256 + 治理字段盖章)
+  test.mjs               # 发布前自动检查(清单字段 / 白名单 / 数据),CI 必须通过
 ```
 
 ```bash
@@ -79,7 +86,82 @@ npm run typecheck
 - **发布**:把 `dist/` 部署到任意静态地址(如 GitHub Pages / release asset),把
   `registry.json` 的 URL 填进核心设置页「插件市场」即可安装 / 更新
 
-## 4. 面板生命周期与作用域
+## 4. 官方插件标记(跨仓库约束)
+
+「官方」徽章对应 Docker 官方镜像的 OFFICIAL 概念:由 MySSH 官方团队维护、可信赖的插件。
+设置页「插件」与「插件市场」在插件名旁显示盾牌「官方」徽章。
+
+### 哪里声明
+
+- **内置插件**:核心仓库 `src/renderer/src/plugins/<id>/index.ts` 里 `official: true`,随应用分发
+- **市场插件**:`registry.json` 条目的 `official: true`,安装时由主进程盖章写入
+  `manifest.json`;设置页「插件市场」与「插件」列表据此显示徽章
+
+### 为什么不能插件自己声明
+
+`official` 是**盖章字段**,只在可信链路上产生,防止第三方自建插件冒充官方:
+
+1. `my-ssh-plug` 仓库维护官方白名单 `official.json`(插件 `id` + `author` 列表)
+2. 该仓库 CI 构建 `registry.json` 时,仅对白名单条目加盖 `official: true`
+3. MySSH 安装插件时,把 registry 的 `official` 写入本地 `manifest.json`
+   (下载经 sha256 校验,来源可信)
+4. 渲染层显示以安装清单为准;插件入口模块里自声明 `official: true` **无效**,
+   会被核心应用用清单值覆盖
+
+拆成两个仓库仍能防伪造:registry 由官方仓库 CI 唯一构建,第三方自建 registry 只能
+影响自己插件,无法让「官方」徽章出现在非官方插件上。若官方白名单变更,发布新
+registry 后用户在「插件市场」点击「重新安装」即可刷新徽章。
+
+## 5. 分类与版本兼容
+
+### 分类表(官方分类,新增分类需在本节登记)
+
+| 分类 id | 名称 | 说明 | 示例 |
+| --- | --- | --- | --- |
+| `terminal` | 终端增强 | 终端内的小功能:命令搜索、补全、提示 | `command-book` |
+| `files` | 文件传输 | 文件传输 / 文件管理增强 | `sftp` |
+| `tool` | 效率工具 | 与终端无强关联的通用工具 | — |
+| `monitor` | 监控运维 | 系统 / 服务器监控、运维面板 | — |
+| `integration` | 服务集成 | 对接第三方服务(云、CI、工单等) | — |
+| `other` | 其他 | 未归类的插件 | — |
+
+清单字段 `category` 必须填表内 id;未知 id 按原值展示,归入「其他」筛选。
+设置页「插件市场」提供分类筛选下拉。
+
+### 版本兼容声明
+
+外部插件必须声明兼容的 MySSH 版本区间(不声明视为兼容所有版本):
+
+```ts
+definePlugin({
+  // ...
+  minAppVersion: '0.1.0',  // 最低兼容版本(semver)
+  maxAppVersion: '0.2.0'   // 可选:最高兼容版本
+})
+```
+
+- 安装时主进程校验当前 `app.getVersion()` 是否在区间内,不满足直接拒绝并给出明确原因
+- 市场列表里不兼容的插件「安装」按钮置灰,悬停提示当前版本与插件要求
+- 破坏性 API 变更必须收窄 `maxAppVersion`(或升 `major`);纯新增保持 `minAppVersion` 不变
+- 官方插件建议始终声明 `minAppVersion`,历史版本兼容性用测试矩阵保证(见下)
+
+### 自动化测试与接入验证(外部插件)
+
+`my-ssh-plug` 仓库 CI 必须全部通过后才允许发布 registry:
+
+1. `npm run typecheck` + `npm run build`(含 react 外部化检查)
+2. 单元测试:覆盖面板 / 挂件的数据与交互逻辑
+3. 接入冒烟测试:在 CI 上把构建产物加载进 MySSH 测试构建(自定义协议
+   `myssh-plugin://`),验证面板渲染、`window.ssh` API 调用、会话作用域行为
+4. 兼容矩阵:对每个声明兼容的 MySSH 版本跑一遍冒烟测试;无法兼容的历史版本必须
+   明确收窄 `minAppVersion` / `maxAppVersion`,不允许含糊
+5. `registry.json` 由 CI 生成,统一加盖 `sha256` / `official` / `category` /
+   版本区间等治理字段,禁止人工手改
+
+测试未通过的插件不允许进入官方 `registry.json`;第三方自建 registry 不受此约束,
+但拿不到「官方」徽章。
+
+## 6. 面板生命周期与作用域
 
 - `scope: 'app'` 的面板在任何时候都可用,组件不接收 props
 - `scope: 'session'` 的面板仅在会话连接后显示,组件接收 `{ sessionId, profile }`
@@ -88,7 +170,7 @@ npm run typecheck
 - 不要在面板卸载时销毁会话:会话生命周期归 App 管理,组件只负责 UI 与 API 调用
 - 面板内避免长任务(阻塞 UI);耗时 / IO 操作必须放主进程
 
-## 5. 能力边界(安全模型)
+## 7. 能力边界(安全模型)
 
 - 渲染进程无 Node 集成,插件**只能**调用 `window.ssh.*` 暴露的 API
 - 需要新能力(如磁盘、隧道、剪贴板)时,按「三件套」同步扩展:
@@ -97,7 +179,7 @@ npm run typecheck
   3. `src/preload/index.ts` — 透传为 `window.ssh` 方法
 - 敏感信息(密码、私钥、会话数据)只在主进程处理,禁止经 IPC 暴露
 
-## 6. 状态与数据
+## 8. 状态与数据
 
 - 插件自身配置使用 `localStorage`,命名空间 `myssh:<pluginId>:*`,避免与其他插件冲突
 - 全局插件开关由 `plugins/index.ts` 统一管理(`myssh:plugin-states`),插件无需关心
@@ -106,14 +188,14 @@ npm run typecheck
   `userData/plugins/<id>/` 目录(经主进程 IPC 读写)。设置页「存储」会自动统计该目录
   占用,并可为每个插件提供「清理缓存」;外部插件额外提供「卸载」(禁用并删除该目录)
 
-## 7. 性能规范
+## 9. 性能规范
 
 - 传输、磁盘、网络等重 IO 一律放主进程(`src/main/`),渲染进程只接收进度事件
 - IPC 事件频率做节流或合并(如传输进度按字节数而非逐块上报)
 - 避免把大对象(文件内容)整体经 IPC 传递;需要流式处理时在主进程内完成
 - 面板渲染保持轻量,长列表做虚拟化或分页
 
-## 8. 命名与版本
+## 10. 命名与版本
 
 - `id`:`kebab-case`、唯一、稳定
 - 面板组件文件用 `<Name>Panel.tsx`,组件名与文件名一致
@@ -121,19 +203,22 @@ npm run typecheck
 - 新增命令/数据等向后兼容变更升 `minor`,修复升 `patch`
 - 外部插件升级由市场清单的 `version` 驱动,MySSH 会清理旧版本目录避免磁盘堆积
 
-## 9. 发布检查清单
+## 11. 发布检查清单
 
 - [ ] `id` 唯一且为 `kebab-case`
 - [ ] `description` 清楚说明功能与适用场景
+- [ ] `category` 使用官方分类表 id(见 §5),未知分类不通过审查
+- [ ] 已声明 `minAppVersion` / `maxAppVersion`,且与 CI 兼容矩阵一致
 - [ ] 非必需功能设置 `defaultEnabled: false`,不打扰默认用户
 - [ ] 外部插件确认 react 已外部化(产物里 `from "react"` 保持裸导入)
 - [ ] 所有主进程能力已通过 `SshApi` 暴露,未绕过 IPC
 - [ ] 面板在无会话(`scope: 'app'`)或会话断开时表现合理
 - [ ] 通过 `npm run typecheck` 与 `npm run build`
+- [ ] CI 跑通单测 + 接入冒烟测试 + 兼容矩阵(见 §5)
 
-## 10. 插件一览
+## 12. 插件一览
 
 | 插件 | id | 类型 | 默认状态 | 说明 |
 | --- | --- | --- | --- | --- |
-| 文件传输(SFTP) | `sftp` | 内置 | 启用 | 高性能上传/下载,会话内使用 |
-| 命令手册 | `command-book` | 外部(market) | 不安装 | 终端底部搜索条:100 条常用命令,关键字匹配,点击复制 |
+| 文件传输(SFTP) | `sftp` | 内置(官方) | 启用 | 高性能上传/下载,会话内使用 |
+| 命令手册 | `command-book` | 外部(market,官方) | 不安装 | 终端底部搜索条:100 条常用命令,关键字匹配,点击复制 |

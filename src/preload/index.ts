@@ -1,12 +1,16 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type {
   InstalledPlugin,
   MarketRegistry,
   Profile,
+  LogInfo,
   SessionStatus,
+  UpdateState,
+  SshProgress,
   SftpDone,
   SftpEntry,
   SftpProgress,
+  SftpReadProgress,
   SftpReadResult,
   IpcResult,
   SshApi
@@ -20,11 +24,13 @@ async function invokeSafe<T>(channel: string, ...args: unknown[]): Promise<T> {
 }
 
 const api: SshApi = {
+  platform: process.platform,
   listProfiles: () => ipcRenderer.invoke('profiles:list'),
   saveProfile: (profile) => ipcRenderer.invoke('profiles:save', profile),
   deleteProfile: (id) => ipcRenderer.invoke('profiles:delete', id),
   pickKeyFile: () => ipcRenderer.invoke('dialog:pickKey'),
   connect: (profile) => ipcRenderer.invoke('ssh:connect', profile),
+  testConnect: (profile) => ipcRenderer.invoke('ssh:test', profile),
   sendData: (sessionId, data) => ipcRenderer.send('ssh:data', sessionId, data),
   resize: (sessionId, cols, rows) => ipcRenderer.send('ssh:resize', sessionId, cols, rows),
   disconnect: (sessionId) => ipcRenderer.send('ssh:disconnect', sessionId),
@@ -40,6 +46,28 @@ const api: SshApi = {
     ipcRenderer.on('ssh:status', listener)
     return () => ipcRenderer.removeListener('ssh:status', listener)
   },
+  onProgress: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, p: SshProgress): void => cb(p)
+    ipcRenderer.on('ssh:progress', listener)
+    return () => ipcRenderer.removeListener('ssh:progress', listener)
+  },
+  onReadProgress: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, p: SftpReadProgress): void => cb(p)
+    ipcRenderer.on('sftp:read-progress', listener)
+    return () => ipcRenderer.removeListener('sftp:read-progress', listener)
+  },
+  onUpdateState: (cb) => {
+    ipcRenderer.send('app:update-subscribe')
+    const listener = (_e: Electron.IpcRendererEvent, s: UpdateState): void => cb(s)
+    ipcRenderer.on('app:update-state', listener)
+    return () => {
+      ipcRenderer.removeListener('app:update-state', listener)
+      ipcRenderer.send('app:update-unsubscribe')
+    }
+  },
+  checkUpdate: () => invokeSafe<UpdateState>('app:update-check'),
+  downloadUpdate: () => invokeSafe<UpdateState>('app:update-download'),
+  installUpdate: () => ipcRenderer.send('app:update-install'),
   sftpHome: (sessionId) => invokeSafe<string>('sftp:home', sessionId),
   sftpList: (sessionId, dir) => invokeSafe<SftpEntry[]>('sftp:list', sessionId, dir),
   sftpMkdir: (sessionId, dir) => invokeSafe<void>('sftp:mkdir', sessionId, dir),
@@ -47,6 +75,7 @@ const api: SshApi = {
     invokeSafe<SftpReadResult>('sftp:read', sessionId, remotePath),
   sftpWrite: (sessionId, remotePath, content) =>
     invokeSafe<void>('sftp:write', sessionId, remotePath, content),
+  sftpStat: (sessionId, remotePath) => invokeSafe<boolean>('sftp:stat', sessionId, remotePath),
   sftpDelete: (sessionId, target, isDir) =>
     invokeSafe<void>('sftp:delete', sessionId, target, isDir),
   sftpDownload: (sessionId, remotePath, localPath) =>
@@ -67,10 +96,14 @@ const api: SshApi = {
   pickLocalDirectory: () => ipcRenderer.invoke('dialog:pickDir'),
   pickSaveFile: (defaultName) => ipcRenderer.invoke('dialog:saveFile', defaultName),
   copyText: (text) => ipcRenderer.send('clipboard:copy', text),
+  getPathForFile: (file: { name: string }) => webUtils.getPathForFile(file as never),
   appInfo: () => ipcRenderer.invoke('app:info'),
   storageScan: (pluginIds) => ipcRenderer.invoke('storage:scan', pluginIds),
   storageCleanCache: () => ipcRenderer.invoke('storage:clean-cache'),
   storageCleanPlugin: (pluginId) => ipcRenderer.invoke('storage:clean-plugin', pluginId),
+  logError: (tag, message, detail) => ipcRenderer.send('log:error', tag, message, detail),
+  logRead: () => invokeSafe<LogInfo>('log:read'),
+  logClear: () => invokeSafe<void>('log:clear'),
   marketFetchRegistry: (url) => invokeSafe<MarketRegistry>('market:fetch-registry', url),
   marketListInstalled: () => invokeSafe<InstalledPlugin[]>('market:list-installed'),
   marketInstall: (url, pluginId) =>

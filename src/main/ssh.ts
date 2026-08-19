@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import { Client, type ClientChannel } from 'ssh2'
 import type { Profile, SessionStatus } from '@shared/types'
 import type { WebContents } from 'electron'
+import { logError } from './logger'
 
 interface Session {
   client: Client
@@ -179,12 +180,21 @@ export function connect(profile: Profile, webContents: WebContents): { sessionId
       webContents.send('ssh:status', { sessionId, ...status } satisfies SessionStatus)
     }
   }
+  // 连接阶段进度:TCP -> 握手 -> 认证 -> 建立会话
+  const sendProgress = (percent: number): void => {
+    if (!webContents.isDestroyed()) webContents.send('ssh:progress', { sessionId, percent })
+  }
 
   send({ status: 'connecting' })
+  sendProgress(8)
+
+  client.on('connect', () => sendProgress(30))
+  client.on('handshake', () => sendProgress(60))
 
   client.on('ready', () => {
     const session = sessions.get(sessionId)
     if (session) session.ready = true
+    sendProgress(85)
     client.shell({ term: 'xterm-256color', cols: 80, rows: 24 }, (err, stream) => {
       if (err) {
         send({ status: 'error', message: err.message })
@@ -194,6 +204,7 @@ export function connect(profile: Profile, webContents: WebContents): { sessionId
       const session = sessions.get(sessionId)
       if (session) session.stream = stream
 
+      sendProgress(100)
       send({ status: 'connected' })
 
       const cleaner = new StreamCleaner(INJECT_SCRIPT)
@@ -234,6 +245,11 @@ export function connect(profile: Profile, webContents: WebContents): { sessionId
   })
 
   client.on('error', (err) => {
+    logError(
+      'ssh',
+      `连接失败 ${profile.username}@${profile.host}:${profile.port}`,
+      err.message
+    )
     send({ status: 'error', message: err.message })
     cleanup(sessionId)
   })
@@ -257,6 +273,67 @@ export function connect(profile: Profile, webContents: WebContents): { sessionId
 
   client.connect(options)
   return { sessionId }
+}
+
+export interface TestConnectionResult {
+  ok: boolean
+  /** 失败时的错误信息(便于复制后提 issue) */
+  message?: string
+}
+
+/** 仅测试连接与认证:成功即断开,不创建会话 */
+export function testConnect(profile: Profile, webContents: WebContents): Promise<TestConnectionResult> {
+  return new Promise((resolve) => {
+    const client = new Client()
+    const sendProgress = (percent: number): void => {
+      if (!webContents.isDestroyed()) webContents.send('ssh:progress', { percent })
+    }
+    const done = (result: TestConnectionResult): void => {
+      client.end()
+      resolve(result)
+    }
+    const timer = setTimeout(() => {
+      logError('ssh', `测试连接超时 ${profile.username}@${profile.host}:${profile.port}`)
+      done({ ok: false, message: '连接超时(15 秒)' })
+    }, 15_000)
+    sendProgress(10)
+    client.on('connect', () => sendProgress(35))
+    client.on('handshake', () => sendProgress(65))
+    client.on('ready', () => {
+      clearTimeout(timer)
+      sendProgress(100)
+      done({ ok: true })
+    })
+    client.on('error', (err) => {
+      clearTimeout(timer)
+      logError(
+        'ssh',
+        `测试连接失败 ${profile.username}@${profile.host}:${profile.port}`,
+        err.message
+      )
+      done({ ok: false, message: err.message })
+    })
+
+    const options: Record<string, unknown> = {
+      host: profile.host,
+      port: profile.port,
+      username: profile.username,
+      readyTimeout: 10_000
+    }
+    if (profile.authType === 'password') {
+      options.password = profile.password
+    } else {
+      try {
+        options.privateKey = fs.readFileSync(profile.keyPath ?? '')
+      } catch (err) {
+        clearTimeout(timer)
+        done({ ok: false, message: `无法读取私钥文件: ${err instanceof Error ? err.message : String(err)}` })
+        return
+      }
+      if (profile.passphrase) options.passphrase = profile.passphrase
+    }
+    client.connect(options)
+  })
 }
 
 export function sendData(sessionId: string, data: string): void {

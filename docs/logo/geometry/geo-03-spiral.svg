@@ -1,0 +1,4 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+  <path d="M 74.77 64.15 A 7.08 7.08 0 0 1 67.69 57.08 M 67.69 57.08 A 7.08 7.08 0 0 1 60.62 64.15 M 60.62 64.15 A 14.15 14.15 0 0 1 74.77 78.31 M 74.77 78.31 A 21.23 21.23 0 0 1 96 57.08 M 96 57.08 A 35.38 35.38 0 0 1 60.62 21.69 M 60.62 21.69 A 56.62 56.62 0 0 1 4 78.31" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="74.77" cy="64.15" r="3.5" fill="currentColor" stroke="none"/>
+</svg>

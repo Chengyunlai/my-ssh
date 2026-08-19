@@ -2,22 +2,28 @@ appId: com.example.myssh
 productName: MySSH
 directories:
   output: dist
+  buildResources: build
 files:
   - out/**
   - package.json
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 mac:
   category: public.app-category.developer-tools
+  icon: build/icon.icns
   target:
     - dmg
 win:
+  icon: build/icon.ico
   target:
     - nsis
 linux:
   category: Network
+  icon: build/icons
   target:
     - AppImage
 publish:
   provider: github
+  owner: Chengyunlai
+  repo: my-ssh
   releaseType: release
 npmRebuild: false

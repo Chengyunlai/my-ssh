@@ -1,10 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { Profile, SftpEntry } from '@shared/types'
+import {
+  ArrowBackIcon,
+  DownloadIcon,
+  FileIcon,
+  FolderIcon,
+  LinkIcon,
+  RefreshIcon,
+  TrashIcon,
+  UploadIcon
+} from '../../components/icons'
 import FileViewer from './FileViewer'
+import PromptDialog from '../../components/PromptDialog'
 
 interface Props {
   sessionId: string
   profile: Profile
+  /** 是否为当前可见标签;从其他标签切回时主动刷新一次,避免终端操作后列表过期 */
+  active?: boolean
 }
 
 interface TransferItem {
@@ -22,6 +36,24 @@ interface ViewerTarget {
   name: string
   path: string
 }
+
+interface PromptState {
+  title: string
+  placeholder?: string
+  onSubmit: (name: string) => void
+}
+
+interface MenuItem {
+  label: string
+  icon: ReactNode
+  danger?: boolean
+  onClick: () => void
+}
+
+type MenuState =
+  | { x: number; y: number; kind: 'entry'; entry: SftpEntry }
+  | { x: number; y: number; kind: 'blank' }
+  | null
 
 function joinPath(dir: string, name: string): string {
   return dir === '/' ? `/${name}` : `${dir}/${name}`
@@ -72,15 +104,21 @@ async function waitForCwd(sessionId: string, timeoutMs = 2500): Promise<string |
   return null
 }
 
-export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
+export default function SftpPanel({ sessionId, active }: Props): React.JSX.Element {
   const [cwd, setCwd] = useState('')
   const [entries, setEntries] = useState<SftpEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [transfers, setTransfers] = useState<TransferItem[]>([])
   const [viewer, setViewer] = useState<ViewerTarget | null>(null)
+  const [menu, setMenu] = useState<MenuState>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [prompt, setPrompt] = useState<PromptState | null>(null)
   const transfersRef = useRef<TransferItem[]>([])
   const cwdRef = useRef('')
+  const activeRef = useRef(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const dragTimerRef = useRef(0)
 
   useEffect(() => {
     cwdRef.current = cwd
@@ -102,6 +140,18 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
     },
     [sessionId]
   )
+
+  // 切换进入文件面板:立即刷新一次;面板保持挂载,只有 active 变化能感知切回
+  useEffect(() => {
+    if (active) {
+      if (activeRef.current && cwdRef.current) {
+        void loadDir(cwdRef.current)
+      }
+      activeRef.current = true
+    } else {
+      activeRef.current = false
+    }
+  }, [active, loadDir])
 
   useEffect(() => {
     let disposed = false
@@ -170,25 +220,57 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
     setViewer({ name: entry.name, path: joinPath(cwd, entry.name) })
   }
 
+  const uploadLocalPath = useCallback(
+    (localPath: string): void => {
+      const name = baseName(localPath)
+      void (async () => {
+        try {
+          const { transferId } = await window.ssh.sftpUpload(
+            sessionId,
+            localPath,
+            joinPath(cwdRef.current, name)
+          )
+          trackTransfer({
+            id: transferId,
+            name,
+            type: 'upload',
+            done: 0,
+            total: 0,
+            speed: 0,
+            status: 'running'
+          })
+        } catch (err) {
+          setError(`${name} 上传失败: ${err instanceof Error ? err.message : String(err)}`)
+        }
+      })()
+    },
+    [sessionId, trackTransfer]
+  )
+
   const startUpload = async (): Promise<void> => {
     const { canceled, filePaths } = await window.ssh.pickLocalFiles()
     if (canceled || filePaths.length === 0) return
-    for (const local of filePaths) {
-      const name = baseName(local)
-      try {
-        const { transferId } = await window.ssh.sftpUpload(sessionId, local, joinPath(cwd, name))
-        trackTransfer({ id: transferId, name, type: 'upload', done: 0, total: 0, speed: 0, status: 'running' })
-      } catch (err) {
-        setError(`${name} 上传失败: ${err instanceof Error ? err.message : String(err)}`)
-      }
+    for (const local of filePaths) uploadLocalPath(local)
+  }
+
+  const createDir = async (name: string): Promise<void> => {
+    try {
+      await window.ssh.sftpMkdir(sessionId, joinPath(cwd, name))
+      await loadDir(cwd)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     }
   }
 
-  const createDir = async (): Promise<void> => {
-    const name = window.prompt('新目录名称', '')
-    if (!name) return
+  const createFile = async (name: string): Promise<void> => {
+    const remote = joinPath(cwd, name)
     try {
-      await window.ssh.sftpMkdir(sessionId, joinPath(cwd, name))
+      const exists = await window.ssh.sftpStat(sessionId, remote)
+      if (exists) {
+        setError(`「${name}」已存在,请换一个名字`)
+        return
+      }
+      await window.ssh.sftpWrite(sessionId, remote, '')
       await loadDir(cwd)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -206,6 +288,127 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
     }
   }
 
+  const closeMenu = useCallback((): void => setMenu(null), [])
+
+  useEffect(() => {
+    if (!menu) return
+    const onDown = (e: MouseEvent): void => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(null)
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setMenu(null)
+    }
+    const onBlur = (): void => setMenu(null)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('blur', onBlur)
+    window.addEventListener('resize', onBlur)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('blur', onBlur)
+      window.removeEventListener('resize', onBlur)
+    }
+  }, [menu])
+
+  // 菜单贴边时翻转,避免超出视口
+  useLayoutEffect(() => {
+    const el = menuRef.current
+    if (!el || !menu) return
+    const rect = el.getBoundingClientRect()
+    const pad = 8
+    let { x, y } = menu
+    if (x + rect.width > window.innerWidth - pad) x = Math.max(pad, window.innerWidth - rect.width - pad)
+    if (y + rect.height > window.innerHeight - pad) y = Math.max(pad, window.innerHeight - rect.height - pad)
+    el.style.left = `${x}px`
+    el.style.top = `${y}px`
+  }, [menu])
+
+  const buildMenuItems = (): MenuItem[] => {
+    if (!menu) return []
+    if (menu.kind === 'entry') {
+      const entry = menu.entry
+      if (entry.type === 'dir') {
+        return [
+          {
+            label: '打开',
+            icon: <FolderIcon size={14} />,
+            onClick: () => void loadDir(joinPath(cwd, entry.name))
+          },
+          { label: '删除', icon: <TrashIcon size={14} />, danger: true, onClick: () => void removeEntry(entry) }
+        ]
+      }
+      return [
+        { label: '预览', icon: <FileIcon size={14} />, onClick: () => openViewer(entry) },
+        { label: '下载', icon: <DownloadIcon size={14} />, onClick: () => void startDownload(entry) },
+        { label: '删除', icon: <TrashIcon size={14} />, danger: true, onClick: () => void removeEntry(entry) }
+      ]
+    }
+    return [
+      {
+        label: '新建文件',
+        icon: <FileIcon size={14} />,
+        onClick: () =>
+          setPrompt({
+            title: '新建文件',
+            placeholder: '文件名,例如 readme.md',
+            onSubmit: (name) => void createFile(name)
+          })
+      },
+      {
+        label: '新建文件夹',
+        icon: <FolderIcon size={14} />,
+        onClick: () =>
+          setPrompt({
+            title: '新建文件夹',
+            placeholder: '文件夹名称',
+            onSubmit: (name) => void createDir(name)
+          })
+      }
+    ]
+  }
+
+  const hasDraggedFiles = (e: React.DragEvent): boolean =>
+    Array.from(e.dataTransfer.types).includes('Files')
+
+  // 高亮用定时续期:dragover 持续刷新,离开面板后短暂超时自动消失;
+  // 拖过内部子元素触发的 dragleave 不会让高亮闪烁或卡住
+  const scheduleDragClear = (): void => {
+    window.clearTimeout(dragTimerRef.current)
+    dragTimerRef.current = window.setTimeout(() => setDragOver(false), 150)
+  }
+
+  const handleDragOver = (e: React.DragEvent): void => {
+    if (!hasDraggedFiles(e)) return
+    e.preventDefault()
+    setDragOver(true)
+    scheduleDragClear()
+  }
+
+  const handleDragLeave = (): void => scheduleDragClear()
+
+  const handleDrop = (e: React.DragEvent): void => {
+    e.preventDefault()
+    window.clearTimeout(dragTimerRef.current)
+    setDragOver(false)
+    const paths = Array.from(e.dataTransfer.files)
+      .map((f) => {
+        try {
+          const p = window.ssh.getPathForFile(f)
+          if (p) return p
+        } catch {
+          // Electron 版本差异时回退到旧属性
+        }
+        return (f as File & { path?: string }).path ?? ''
+      })
+      .filter((p): p is string => Boolean(p))
+    const dirs = paths.filter((p) => /[/\\]$/.test(p))
+    const files = paths.filter((p) => !/[/\\]$/.test(p))
+    if (dirs.length > 0) setError('暂不支持拖入文件夹,请拖入文件')
+    if (files.length === 0 && dirs.length === 0) setError('无法获取拖入文件的路径')
+    files.forEach(uploadLocalPath)
+  }
+
   const sorted = [...entries].sort((a, b) => {
     if (a.type === 'dir' && b.type !== 'dir') return -1
     if (a.type !== 'dir' && b.type === 'dir') return 1
@@ -213,28 +416,48 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
   })
 
   return (
-    <div className="sftp-panel">
+    <div
+      className={`sftp-panel${dragOver ? ' dragging' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="sftp-toolbar">
         <button className="btn btn-sm" onClick={() => void loadDir(parentOf(cwd))} disabled={cwd === '/'}>
-          ← 上级
+          <ArrowBackIcon size={14} /> 上级
         </button>
         <span className="sftp-path" title={cwd}>
           {cwd}
         </span>
         <button className="btn btn-sm" onClick={() => void loadDir(cwd)} title="刷新">
-          ↻
+          <RefreshIcon size={14} />
         </button>
-        <button className="btn btn-sm" onClick={() => void createDir()}>
+        <button
+          className="btn btn-sm"
+          onClick={() =>
+            setPrompt({
+              title: '新建文件夹',
+              placeholder: '文件夹名称',
+              onSubmit: (name) => void createDir(name)
+            })
+          }
+        >
           新建目录
         </button>
         <button className="btn btn-primary btn-sm" onClick={() => void startUpload()}>
-          ↑ 上传
+          <UploadIcon size={14} /> 上传
         </button>
       </div>
 
       {error && <div className="sftp-error">{error}</div>}
 
-      <div className="sftp-list">
+      <div
+        className="sftp-list"
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setMenu({ x: e.clientX, y: e.clientY, kind: 'blank' })
+        }}
+      >
         {loading ? (
           <div className="sftp-hint">加载中…</div>
         ) : sorted.length === 0 ? (
@@ -246,47 +469,40 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
                 <th>名称</th>
                 <th>大小</th>
                 <th>修改时间</th>
-                <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((e) => (
                 <tr
                   key={e.name}
+                  onContextMenu={(ev) => {
+                    ev.preventDefault()
+                    ev.stopPropagation()
+                    setMenu({ x: ev.clientX, y: ev.clientY, kind: 'entry', entry: e })
+                  }}
                   onDoubleClick={() =>
                     e.type === 'dir' ? void loadDir(joinPath(cwd, e.name)) : openViewer(e)
                   }
                 >
                   <td>
                     <span className={`sftp-name sftp-${e.type}`}>
-                      {e.type === 'dir' ? '📁' : e.type === 'link' ? '🔗' : '📄'} {e.name}
+                      <span className="sftp-type-icon">
+                        {e.type === 'dir' ? <FolderIcon size={14} /> : e.type === 'link' ? <LinkIcon size={14} /> : <FileIcon size={14} />}
+                      </span>
+                      {e.name}
                     </span>
                   </td>
                   <td>{e.type === 'dir' ? '—' : formatSize(e.size)}</td>
                   <td>{formatTime(e.mtime)}</td>
-                  <td className="sftp-actions">
-                    {e.type === 'dir' ? (
-                      <button className="btn btn-xs" onClick={() => void loadDir(joinPath(cwd, e.name))}>
-                        打开
-                      </button>
-                    ) : (
-                      <>
-                        <button className="btn btn-xs" onClick={() => openViewer(e)}>
-                          预览
-                        </button>
-                        <button className="btn btn-xs" onClick={() => void startDownload(e)}>
-                          下载
-                        </button>
-                      </>
-                    )}
-                    <button className="btn btn-xs btn-danger" onClick={() => void removeEntry(e)}>
-                      删除
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        )}
+        {dragOver && (
+          <div className="sftp-drop-hint">
+            <UploadIcon size={16} /> 松开上传到 {cwd || '当前目录'}
+          </div>
         )}
       </div>
 
@@ -310,7 +526,7 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
               <div className="transfer-item" key={t.id}>
                 <div className="transfer-info">
                   <span className="transfer-name">
-                    {t.type === 'download' ? '↓' : '↑'} {t.name}
+                    {t.type === 'download' ? <DownloadIcon size={12} /> : <UploadIcon size={12} />} {t.name}
                   </span>
                   <span className="transfer-meta">
                     {t.status === 'running'
@@ -337,6 +553,36 @@ export default function SftpPanel({ sessionId }: Props): React.JSX.Element {
           onClose={() => setViewer(null)}
           onDownload={(remotePath, name) => void downloadRemote(remotePath, name)}
           onSaved={() => void loadDir(cwd)}
+        />
+      )}
+
+      {menu && (
+        <div ref={menuRef} className="sftp-menu" style={{ left: menu.x, top: menu.y }}>
+          {buildMenuItems().map((item) => (
+            <button
+              key={item.label}
+              className={`sftp-menu-item${item.danger ? ' danger' : ''}`}
+              onClick={() => {
+                closeMenu()
+                item.onClick()
+              }}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {prompt && (
+        <PromptDialog
+          title={prompt.title}
+          placeholder={prompt.placeholder}
+          onSubmit={(name) => {
+            setPrompt(null)
+            prompt.onSubmit(name)
+          }}
+          onCancel={() => setPrompt(null)}
         />
       )}
     </div>

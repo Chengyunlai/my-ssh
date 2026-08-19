@@ -8,18 +8,42 @@
 
 ```css
 :root {
-  /* 颜色 */
-  --bg: #0f1115;            /* 终端底色 */
-  --bg-sidebar: #15181f;
-  --bg-panel: #1a1e27;
-  --border: #262b36;
-  --text: #e6e6e6;
-  --text-dim: #8b93a3;
-  --accent: #4f8cff;
-  --accent-hover: #6ba0ff;  /* primary 按钮 hover 用更亮的 accent,勿用 filter */
-  --danger: #ff6b6b;
-  --ok: #4ade80;
-  --warn: #ffcc66;
+  /* 字体(参考 pi-gui 的字体栈) */
+  --font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, "Cascadia Code", Consolas, monospace;
+
+  /* 颜色:用户指定近黑中性灰(#161616 / #080808)+ 强调蓝 #61a6fb(用户配色) */
+  --bg: #161616;            /* 主区 / 侧边栏底色 */
+  --bg-panel: #181818;      /* 侧边栏 / 标签栏(微亮一档,保持扁平) */
+  --bg-raised: #2a2a2a;     /* 活动标签 / 浮层 / 弹层 */
+  --bg-hover: #222222;      /* 列表 hover */
+  --input-bg: #1c1c1c;      /* 输入框 */
+  /* 发丝线边框 + 交互覆盖层:前景色 alpha 混合,随主题自动翻转(pi-gui 做法) */
+  --border-light: color-mix(in srgb, var(--text-bright) 7%, transparent);
+  --border: color-mix(in srgb, var(--text-bright) 12%, transparent);
+  --border-strong: color-mix(in srgb, var(--text-bright) 20%, transparent);
+  --overlay-subtle: color-mix(in srgb, var(--text-bright) 5%, transparent);
+  --overlay-hover: color-mix(in srgb, var(--text-bright) 8%, transparent);
+  --overlay-active: color-mix(in srgb, var(--text-bright) 12%, transparent);
+
+  --text: #d0d0d0;
+  --text-bright: #fafafa;
+  --text-dim: #8f8f8f;
+  --accent: #61a6fb;        /* 强调蓝(用户配色) */
+  --accent-hover: #7db9ff;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-soft-strong: color-mix(in srgb, var(--accent) 24%, transparent);
+  --accent-tint-border: color-mix(in srgb, var(--accent) 45%, transparent);
+  --danger: #ef6a62;
+  --danger-strong: #c0524b; /* 状态栏错误底色 */
+  --ok: var(--accent);
+  --ok-strong: #3f82d6;     /* 状态栏已连接底色 */
+  --warn: #dcb762;
+  --terminal-bg: #080808;   /* 终端画布:最深(用户配色) */
+
+  /* 焦点环:3px 半透明强调色(pi-gui 做法) */
+  --focus-ring-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  --focus-ring: 0 0 0 3px var(--focus-ring-color);
 
   /* 间距:4px 基准 */
   --sp-1: 4px;
@@ -29,16 +53,23 @@
   --sp-5: 20px;
   --sp-6: 24px;
 
-  /* 圆角 */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  /* 圆角:统一阶梯,所有元素只允许使用这套 token */
+  --radius-xs: 4px;         /* 极小的点缀 */
+  --radius-sm: 6px;         /* 输入框 / 小按钮 */
+  --radius-md: 8px;         /* 按钮 / 列表项 / 卡片 */
+  --radius-lg: 10px;        /* 面板 / 下拉 / 弹层 */
+  --radius-xl: 12px;        /* 大磁贴 / 对话框 */
   --radius-full: 999px;
 
-  /* 阴影:一律半透明,不用实边框堆层次 */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-pop: 0 -6px 28px rgba(0, 0, 0, 0.5);
+  /* 阴影 + 发丝线描边(pi-gui 的 hairline-stroke 抬升) */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 -6px 24px rgba(0, 0, 0, 0.45);
+  --elevation-hairline: 0 0 0 0.5px var(--border-heavy);
+  --elevation-popover: var(--elevation-hairline), var(--shadow-2);
+
+  /* 原生窗口:顶部工具条高度(与 macOS 红绿灯 / Win 覆盖按钮对齐) */
+  --titlebar-height: 44px;
 
   /* 动效 */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -49,6 +80,14 @@
   --dur-slow: 250ms;    /* 下拉 / tab 等稍重过渡 */
 }
 ```
+
+> 视觉方向为「现代终端工具质感」(配色按用户指定 #161616/#080808/#61a6fb,结构参考 pi-gui):
+> 统一顶栏(logo + 标题 + 连接状态 + 操作按钮)+ 可折叠侧边栏(服务器列表)+ 主区终端 +
+> 底部状态栏;无活动栏,去掉 VS Code 式图标栏。终端画布用独立 `--terminal-bg`(#080808),
+> 不跟随 `--bg`。面板内边距统一以文件面板(`.sftp-panel`)为准,均为 `12px`;终端
+> 横向内边距 `25px`(12 面板 + 1 边框 + 12 单元格),使终端输出起点与文件列表表格文本对齐,输出不贴边。主按钮 accent 绿底深字
+> (`#61a6fb` + `#08120b`),不用反白白底;蓝色同时用于状态、选中、焦点等语义位置。
+> 顶栏为可拖拽区域(`-webkit-app-region: drag`),交互控件一律 `no-drag`。
 
 ## 2. 动效决策框架
 

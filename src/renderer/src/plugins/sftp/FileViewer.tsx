@@ -24,6 +24,7 @@ import { dockerFile } from '@codemirror/legacy-modes/mode/dockerfile'
 import { toml } from '@codemirror/legacy-modes/mode/toml'
 import { properties } from '@codemirror/legacy-modes/mode/properties'
 import type { SftpReadResult } from '@shared/types'
+import type { OfficeParseResponse } from './office.worker'
 
 interface Props {
   sessionId: string
@@ -33,6 +34,9 @@ interface Props {
   onDownload: (remotePath: string, name: string) => void
   onSaved: () => void
 }
+
+/** 超过该体积的文本预览跳过语法高亮与编辑增强,避免大文件卡住 UI */
+const LARGE_TEXT_BYTES = 512 * 1024
 
 /**
  * 语法高亮映射:预览与编辑共用同一份规则。
@@ -89,6 +93,10 @@ export default function FileViewer({
   const [imgFit, setImgFit] = useState(true)
   const [wrap, setWrap] = useState(true)
   const [content, setContent] = useState('')
+  const [officeHtml, setOfficeHtml] = useState<string | null>(null)
+  const [officeLoading, setOfficeLoading] = useState(false)
+  const [officeError, setOfficeError] = useState<string | null>(null)
+  const [readProgress, setReadProgress] = useState(0)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const editableCompRef = useRef<Compartment | null>(null)
@@ -103,6 +111,10 @@ export default function FileViewer({
     setEditing(false)
     setWrap(true)
     setContent('')
+    setOfficeHtml(null)
+    setOfficeLoading(false)
+    setOfficeError(null)
+    setReadProgress(0)
     void window.ssh
       .sftpRead(sessionId, remotePath)
       .then((r) => {
@@ -118,6 +130,55 @@ export default function FileViewer({
     }
   }, [sessionId, remotePath])
 
+  // 预览下载进度:主进程按流式字节数上报,按会话 + 路径过滤
+  useEffect(() => {
+    return window.ssh.onReadProgress((p) => {
+      if (p.sessionId === sessionId && p.remotePath === remotePath) {
+        setReadProgress(p.percent)
+      }
+    })
+  }, [sessionId, remotePath])
+
+  // docx / xlsx 解析预览:解析放到 Web Worker,避免大文档卡住 UI 主线程
+  useEffect(() => {
+    if (result?.kind !== 'office' || !result.bytes) return
+    let disposed = false
+    const ext = name.split('.').pop()?.toLowerCase() ?? ''
+    setOfficeLoading(true)
+    setOfficeError(null)
+    setOfficeHtml(null)
+    const worker = new Worker(new URL('./office.worker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (e: MessageEvent<OfficeParseResponse>): void => {
+      if (disposed) {
+        worker.terminate()
+        return
+      }
+      const res = e.data
+      setOfficeLoading(false)
+      if (!res.ok) {
+        setOfficeError(res.error ?? '解析失败')
+      } else {
+        // 净化仍依赖 DOM,放回渲染主线程(解析是重活,净化很轻)
+        void import('dompurify').then(({ default: purify }) => {
+          if (!disposed) setOfficeHtml(purify.sanitize(res.html ?? ''))
+        })
+      }
+      worker.terminate()
+    }
+    worker.onerror = (e): void => {
+      if (!disposed) {
+        setOfficeLoading(false)
+        setOfficeError(e.message || '文档解析失败')
+      }
+      worker.terminate()
+    }
+    worker.postMessage({ ext, bytes: result.bytes })
+    return () => {
+      disposed = true
+      worker.terminate()
+    }
+  }, [result, name])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -129,15 +190,16 @@ export default function FileViewer({
   // 单一 CodeMirror 实例:预览 = 只读态,编辑 = 可写态,高亮规则完全一致
   useEffect(() => {
     if (!result || result.kind !== 'text' || !editorHostRef.current) return
+    // 大文本跳过 basicSetup(行号/历史等)与语法高亮,显著降低渲染耗时
+    const largeText = content.length > LARGE_TEXT_BYTES
     const editableComp = new Compartment()
     const wrapComp = new Compartment()
     const view = new EditorView({
       doc: content,
       parent: editorHostRef.current,
       extensions: [
-        basicSetup,
+        ...(largeText ? [] : [basicSetup, langFor(name)]),
         oneDark,
-        langFor(name),
         editableComp.of(modeExts(false)),
         wrapComp.of(EditorView.lineWrapping),
         keymap.of([
@@ -210,6 +272,9 @@ export default function FileViewer({
   }
 
   const isText = result?.kind === 'text'
+  // 下载阶段封顶 85%,解析阶段 85-90%
+  const loadingPct = Math.round((readProgress / 100) * 85)
+  const parsingPct = Math.min(90, Math.max(loadingPct, 85))
 
   return (
     <div
@@ -270,11 +335,39 @@ export default function FileViewer({
         </div>
         <div className="file-viewer-body">
           {error && <div className="sftp-error">{error}</div>}
-          {!result && !error && <div className="file-viewer-hint">加载中…</div>}
+          {!result && !error && (
+            <div className="file-viewer-loading">
+              <div className="file-viewer-hint">加载中…</div>
+              <div className="file-viewer-progress">
+                <div className="file-viewer-progress-inner" style={{ width: `${loadingPct}%` }} />
+              </div>
+              <div className="file-viewer-percent">{loadingPct}%</div>
+            </div>
+          )}
           {result?.kind === 'image' && (
             <div className={`file-viewer-image${imgFit ? '' : ' original'}`}>
               <img src={result.dataUrl} alt={name} />
             </div>
+          )}
+          {result?.kind === 'pdf' && (
+            <iframe className="file-viewer-pdf" src={result.dataUrl} title={name} />
+          )}
+          {result?.kind === 'office' && (
+            <>
+              {officeLoading && (
+                <div className="file-viewer-loading">
+                  <div className="file-viewer-hint">正在解析文档…</div>
+                  <div className="file-viewer-progress">
+                    <div className="file-viewer-progress-inner parsing" style={{ width: `${parsingPct}%` }} />
+                  </div>
+                  <div className="file-viewer-percent">{parsingPct}%</div>
+                </div>
+              )}
+              {officeError && <div className="sftp-error">{officeError}</div>}
+              {officeHtml && (
+                <div className="file-viewer-doc" dangerouslySetInnerHTML={{ __html: officeHtml }} />
+              )}
+            </>
           )}
           {result?.kind === 'binary' && (
             <div className="file-viewer-hint">二进制文件,不支持在线预览/编辑,请下载后查看</div>

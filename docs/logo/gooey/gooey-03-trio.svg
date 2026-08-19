@@ -1,0 +1,14 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+  <defs>
+    <filter id="gref-trio">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -11" result="goo"/>
+      <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+    </filter>
+  </defs>
+  <g filter="url(#gref-trio)">
+    <circle cx="42" cy="54" r="17"/>
+    <circle cx="66" cy="42" r="12"/>
+    <circle cx="72" cy="62" r="6.5"/>
+  </g>
+</svg>
