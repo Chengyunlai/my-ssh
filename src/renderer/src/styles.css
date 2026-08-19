@@ -496,6 +496,139 @@ html[data-platform='darwin'] .topbar {
   display: none;
 }
 
+/* ---------- 会话标签栏(多会话,浏览器风格) ---------- */
+.session-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.session-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 7px 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: default;
+  max-width: 190px;
+  flex-shrink: 0;
+  transition:
+    color var(--dur-fast) ease,
+    background-color var(--dur-fast) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .session-tab:hover {
+    color: var(--text-bright);
+    background: var(--bg-selected);
+  }
+}
+
+.session-tab.active {
+  background: var(--bg-selected);
+  color: var(--text-bright);
+}
+
+.session-tab.dead {
+  color: color-mix(in srgb, var(--text-dim) 72%, transparent);
+}
+
+.session-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-dim) 45%, transparent);
+  flex-shrink: 0;
+}
+
+.session-tab-dot.status-connected {
+  background: var(--accent);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.session-tab-dot.status-connecting {
+  background: var(--warn);
+  animation: session-dot-pulse 0.9s ease-in-out infinite;
+}
+
+.session-tab-dot.status-error,
+.session-tab-dot.status-disconnected {
+  background: var(--danger);
+}
+
+@keyframes session-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.session-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  opacity: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    opacity var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    background-color var(--dur-fast) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .session-tab:hover .session-tab-close,
+  .session-tab.active .session-tab-close {
+    opacity: 0.7;
+  }
+
+  .session-tab-close:hover {
+    opacity: 1;
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+  }
+}
+
+/* 失效标签的关闭键常显,提示可关闭/重连 */
+.session-tab.dead .session-tab-close {
+  opacity: 0.7;
+}
+
+/* 单个会话视图:切换时仅隐藏不卸载,保住终端缓冲 */
+.session-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.session-view.hidden {
+  display: none;
+}
+
 /* 编辑器标签页(VS Code / Trae 风格) */
 .tabs {
   display: flex;

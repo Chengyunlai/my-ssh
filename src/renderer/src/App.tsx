@@ -26,9 +26,12 @@ import {
 } from './plugins'
 import type { AppPanelProps, MySshPlugin, SessionPanelProps } from './plugins/types'
 
-interface ActiveSession {
+/** 一个会话标签:独立终端 + 面板页签,切换时保持挂载不丢缓冲 */
+interface SessionTab {
   sessionId: string
   profile: Profile
+  /** 面板页签:'terminal' 或会话级插件 id */
+  panelTab: string
 }
 
 const STATUS_TEXT: Record<SessionStatus['status'], string> = {
@@ -39,9 +42,14 @@ const STATUS_TEXT: Record<SessionStatus['status'], string> = {
 }
 
 
+function liveIn(map: Record<string, SessionStatus>, sessionId: string): boolean {
+  const st = map[sessionId]?.status
+  return st === 'connecting' || st === 'connected'
+}
+
 function renderPanel(
   p: MySshPlugin,
-  session: ActiveSession | null,
+  session: SessionTab | null,
   active: boolean
 ): React.JSX.Element | null {
   if (!p.panel) return null
@@ -69,22 +77,43 @@ export default function App(): React.JSX.Element {
   const [editing, setEditing] = useState<Profile | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [view, setView] = useState<'main' | 'settings'>('main')
-  const [session, setSession] = useState<ActiveSession | null>(null)
-  const [status, setStatus] = useState<SessionStatus | null>(null)
+  const [sessions, setSessions] = useState<SessionTab[]>([])
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [statusMap, setStatusMap] = useState<Record<string, SessionStatus>>({})
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState('terminal')
+  /** app 级插件面板:独立于会话,挂在会话标签栏右侧 */
+  const [appPanelActive, setAppPanelActive] = useState<string | null>(null)
   const [pluginStates, setPluginStates] = useState<PluginStates>(() => loadPluginStates())
   const [allPlugins, setAllPlugins] = useState<MySshPlugin[]>(builtinPlugins)
   // 连接覆盖层:connecting(logo 装配循环) -> settling(连接完成,收尾定格) -> leaving(淡出) -> null
   const [connectOverlay, setConnectOverlay] = useState<'connecting' | 'settling' | 'leaving' | null>(null)
+  const [overlaySessionId, setOverlaySessionId] = useState<string | null>(null)
   const [connectProgress, setConnectProgress] = useState(0)
   const smoothProgress = useSmoothProgress(connectProgress, !!connectOverlay)
-  const sessionRef = useRef<ActiveSession | null>(null)
+  const sessionsRef = useRef<SessionTab[]>([])
+  const statusMapRef = useRef<Record<string, SessionStatus>>({})
+  const activeSessionIdRef = useRef<string | null>(null)
+  const overlaySessionIdRef = useRef<string | null>(null)
   const lastProfileRef = useRef<Profile | null>(null)
 
   const enabledPlugins = allPlugins.filter((p) => pluginStates[p.id] ?? p.defaultEnabled ?? true)
+  const appScopePlugins = enabledPlugins.filter((p) => p.panel?.scope === 'app')
+
+  /** 异步回调里判定会话存活:读 ref 拿调用时刻的最新值 */
+  const isLive = useCallback(
+    (sessionId: string): boolean => {
+      const st = statusMapRef.current[sessionId]?.status
+      return st === 'connecting' || st === 'connected'
+    },
+    []
+  )
+
+  const activeSession =
+    sessions.find((s) => s.sessionId === activeSessionId) ?? null
+  const activeStatus = activeSession ? statusMap[activeSession.sessionId] : undefined
+  const activeIndex = sessions.findIndex((s) => s.sessionId === activeSessionId)
 
   const filteredProfiles = profiles.filter((p) => {
     const q = query.trim().toLowerCase()
@@ -105,17 +134,25 @@ export default function App(): React.JSX.Element {
   }, [reloadPlugins])
 
   useEffect(() => {
-    setActiveTab('terminal')
-  }, [session?.sessionId])
+    sessionsRef.current = sessions
+  }, [sessions])
 
   useEffect(() => {
-    sessionRef.current = session
-  }, [session])
+    statusMapRef.current = statusMap
+  }, [statusMap])
 
   useEffect(() => {
-    const p = allPlugins.find((x) => x.panel && x.id === activeTab)
-    if (p?.panel?.scope === 'session' && !session) setActiveTab('terminal')
-  }, [session, activeTab, allPlugins])
+    activeSessionIdRef.current = activeSessionId
+  }, [activeSessionId])
+
+  useEffect(() => {
+    overlaySessionIdRef.current = overlaySessionId
+  }, [overlaySessionId])
+
+  // 活动会话切换时,侧边栏选中态跟随其服务器
+  useEffect(() => {
+    setSelectedId(activeSession?.profile.id ?? null)
+  }, [activeSessionId, sessions])
 
   const refresh = useCallback(async () => {
     setProfiles(await window.ssh.listProfiles())
@@ -126,15 +163,23 @@ export default function App(): React.JSX.Element {
   }, [refresh])
 
   useEffect(() => {
-    if (status?.status === 'connecting') {
+    const sid = activeSessionId
+    const st = sid ? statusMap[sid] : undefined
+    if (st?.status === 'connecting') {
+      setOverlaySessionId(sid)
       setConnectOverlay('connecting')
-    } else if (connectOverlay === 'connecting' && status?.status === 'connected') {
+    } else if (connectOverlay === 'connecting' && overlaySessionId === activeSessionId && st?.status === 'connected') {
       // 连接完成:动效收尾(装配定格 + 磁贴浮现)后进入,时长与连接节奏绑定
       setConnectOverlay('settling')
-    } else if (connectOverlay && status?.status !== 'connected') {
+    } else if (
+      connectOverlay &&
+      overlaySessionId === activeSessionId &&
+      (st?.status === 'disconnected' || st?.status === 'error')
+    ) {
       setConnectOverlay(null)
+      setOverlaySessionId(null)
     }
-  }, [status, connectOverlay])
+  }, [activeSessionId, statusMap, connectOverlay, overlaySessionId])
 
   useEffect(() => {
     if (connectOverlay === 'settling') {
@@ -142,27 +187,24 @@ export default function App(): React.JSX.Element {
       return () => window.clearTimeout(t)
     }
     if (connectOverlay === 'leaving') {
-      const t = window.setTimeout(() => setConnectOverlay(null), 220)
+      const t = window.setTimeout(() => {
+        setConnectOverlay(null)
+        setOverlaySessionId(null)
+      }, 220)
       return () => window.clearTimeout(t)
     }
   }, [connectOverlay])
 
   useEffect(() => {
     return window.ssh.onStatus((s) => {
-      setStatus(s)
-      if (s.status === 'disconnected' || s.status === 'error') {
-        setSession((cur) => (cur && cur.sessionId === s.sessionId ? null : cur))
-        if (s.status === 'error') setError(s.message || '连接失败')
-      } else {
-        setError(null)
-      }
+      setStatusMap((m) => ({ ...m, [s.sessionId]: s }))
     })
   }, [])
 
   // 连接阶段进度:主进程按 TCP / 握手 / 认证 / 会话 阶段上报
   useEffect(() => {
     return window.ssh.onProgress((p) => {
-      if (p.sessionId === undefined || p.sessionId === sessionRef.current?.sessionId) {
+      if (p.sessionId === undefined || p.sessionId === overlaySessionIdRef.current) {
         setConnectProgress(p.percent)
       }
     })
@@ -179,24 +221,51 @@ export default function App(): React.JSX.Element {
     }
   }, [])
 
-  const connect = useCallback(async (profile: Profile) => {
-    if (sessionRef.current) window.ssh.disconnect(sessionRef.current.sessionId)
-    lastProfileRef.current = profile
-    setSelectedId(profile.id)
-    // 从编辑/新建表单直接点列表连接时,退出编辑态,避免表单挡住会话视图
-    setShowForm(false)
-    setEditing(null)
-    setError(null)
-    setConnectProgress(0)
-    try {
-      const { sessionId } = await window.ssh.connect(profile)
-      setStatus({ sessionId, status: 'connecting' })
-      setSession({ sessionId, profile })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      setStatus(null)
-    }
+  const activateSession = useCallback((sessionId: string): void => {
+    setActiveSessionId(sessionId)
+    setAppPanelActive(null)
   }, [])
+
+  const connect = useCallback(
+    async (profile: Profile) => {
+      lastProfileRef.current = profile
+      setSelectedId(profile.id)
+      // 从编辑/新建表单直接点列表连接时,退出编辑态,避免表单挡住会话视图
+      setShowForm(false)
+      setEditing(null)
+      setError(null)
+      // 同一服务器已有存活会话:直接切换过去,不重复建连
+      const existing = sessionsRef.current.find(
+        (t) => t.profile.id === profile.id && isLive(t.sessionId)
+      )
+      if (existing) {
+        activateSession(existing.sessionId)
+        return
+      }
+      setConnectProgress(0)
+      try {
+        const { sessionId } = await window.ssh.connect(profile)
+        setStatusMap((m) => ({ ...m, [sessionId]: { sessionId, status: 'connecting' } }))
+        // 重连场景:替换同一服务器的失效标签
+        const deadIds = sessionsRef.current
+          .filter((t) => t.profile.id === profile.id && !isLive(t.sessionId))
+          .map((t) => t.sessionId)
+        setSessions((list) => [
+          ...list.filter((t) => !deadIds.includes(t.sessionId)),
+          { sessionId, profile, panelTab: 'terminal' }
+        ])
+        setStatusMap((m) => {
+          const next = { ...m }
+          for (const id of deadIds) delete next[id]
+          return next
+        })
+        activateSession(sessionId)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+      }
+    },
+    [activateSession, isLive]
+  )
 
   const handleSaveAndConnect = useCallback(
     async (profile: Profile) => {
@@ -214,14 +283,53 @@ export default function App(): React.JSX.Element {
     setShowForm(true)
   }
 
+  const closeSession = useCallback(
+    (tab: SessionTab): void => {
+      const live = isLive(tab.sessionId)
+      if (live && !window.confirm(`断开并关闭「${tab.profile.name}」?`)) return
+      if (live) window.ssh.disconnect(tab.sessionId)
+      const list = sessionsRef.current
+      const idx = list.findIndex((t) => t.sessionId === tab.sessionId)
+      const next = list.filter((t) => t.sessionId !== tab.sessionId)
+      setSessions(next)
+      setStatusMap((m) => {
+        const n = { ...m }
+        delete n[tab.sessionId]
+        return n
+      })
+      if (activeSessionIdRef.current === tab.sessionId) {
+        const neighbor = next[Math.min(idx, next.length - 1)]
+        setActiveSessionId(neighbor ? neighbor.sessionId : null)
+      }
+      if (overlaySessionIdRef.current === tab.sessionId) {
+        setConnectOverlay(null)
+        setOverlaySessionId(null)
+      }
+    },
+    [isLive]
+  )
+
   const handleDelete = async (id: string): Promise<void> => {
     const profile = profiles.find((p) => p.id === id)
     const name = profile?.name ?? id
     if (!window.confirm(`删除服务器「${name}」?将移除其连接配置。`)) return
-    if (selectedId === id) setSelectedId(null)
-    if (sessionRef.current?.profile.id === id) {
-      window.ssh.disconnect(sessionRef.current.sessionId)
-      setSession(null)
+    const related = sessionsRef.current.filter((t) => t.profile.id === id)
+    for (const t of related) {
+      if (isLive(t.sessionId)) window.ssh.disconnect(t.sessionId)
+    }
+    const remaining = sessionsRef.current.filter((t) => t.profile.id !== id)
+    setSessions(remaining)
+    setStatusMap((m) => {
+      const n = { ...m }
+      for (const t of related) delete n[t.sessionId]
+      return n
+    })
+    if (related.some((t) => t.sessionId === activeSessionIdRef.current)) {
+      setActiveSessionId(remaining.length > 0 ? remaining[remaining.length - 1].sessionId : null)
+    }
+    if (related.some((t) => t.sessionId === overlaySessionIdRef.current)) {
+      setConnectOverlay(null)
+      setOverlaySessionId(null)
     }
     await window.ssh.deleteProfile(id)
     await refresh()
@@ -235,17 +343,23 @@ export default function App(): React.JSX.Element {
   const togglePlugin = (id: string, enabled: boolean): void => {
     savePluginState(id, enabled)
     setPluginStates(loadPluginStates())
-    if (!enabled && activeTab === id) setActiveTab('terminal')
+    if (!enabled) {
+      // 被禁用的插件不再有面板:相关页签全部回落到终端
+      setSessions((list) => list.map((t) => (t.panelTab === id ? { ...t, panelTab: 'terminal' } : t)))
+      setAppPanelActive((cur) => (cur === id ? null : cur))
+    }
   }
 
-  const showTabs = session !== null || enabledPlugins.some((p) => p.panel?.scope === 'app')
+  const connectedProfileIds = new Set(
+    sessions.filter((t) => liveIn(statusMap, t.sessionId)).map((t) => t.profile.id)
+  )
 
-  const sessionLabel = session
-    ? `${session.profile.name} — ${session.profile.username}@${session.profile.host}`
+  const sessionLabel = activeSession
+    ? `${activeSession.profile.name} — ${activeSession.profile.username}@${activeSession.profile.host}`
     : '未连接'
 
-  const statusText = status
-    ? `${STATUS_TEXT[status.status]}${status.message ? `: ${status.message}` : ''}`
+  const statusText = activeStatus
+    ? `${STATUS_TEXT[activeStatus.status]}${activeStatus.message ? `: ${activeStatus.message}` : ''}`
     : '未连接'
 
   return (
@@ -254,7 +368,7 @@ export default function App(): React.JSX.Element {
         <div className="topbar-left">
           <img className="topbar-logo" src={mysshIcon} alt="" aria-hidden="true" />
           <span className="topbar-title">MySSH</span>
-          {session && <span className="topbar-session">{session.profile.name}</span>}
+          {activeSession && <span className="topbar-session">{activeSession.profile.name}</span>}
         </div>
         <div className="topbar-right">
           <button
@@ -309,7 +423,7 @@ export default function App(): React.JSX.Element {
                     title={`${p.username}@${p.host}:${p.port}`}
                     onClick={() => void connect(p)}
                   >
-                    <span className={`profile-dot${p.id === selectedId ? ' on' : ''}`} />
+                    <span className={`profile-dot${connectedProfileIds.has(p.id) ? ' on' : ''}`} />
                     <span className="profile-main">
                       <span className="profile-name">{p.name}</span>
                       <span className="profile-detail">
@@ -372,65 +486,157 @@ export default function App(): React.JSX.Element {
                 />
               )}
               <div className={`session-views${showForm ? ' hidden' : ''}`}>
-                {showTabs && (
-                  <div className="tabs">
-                    {session && (
-                      <button
-                        className={`tab${activeTab === 'terminal' ? ' active' : ''}`}
-                        onClick={() => setActiveTab('terminal')}
-                      >
-                        终端
-                      </button>
-                    )}
-                    {enabledPlugins
-                      .filter((p) => p.panel && (p.panel.scope === 'app' || session))
-                      .map((p) => (
-                        <button
-                          key={p.id}
-                          className={`tab${activeTab === p.id ? ' active' : ''}`}
-                          onClick={() => setActiveTab(p.id)}
+                {(sessions.length > 0 || appScopePlugins.length > 0) && (
+                  <div className="session-strip">
+                {sessions.map((tab) => {
+                  const st = statusMap[tab.sessionId]?.status ?? 'connecting'
+                  const dead = !liveIn(statusMap, tab.sessionId)
+                      return (
+                        <div
+                          key={tab.sessionId}
+                          className={`session-tab${tab.sessionId === activeSessionId ? ' active' : ''}${dead ? ' dead' : ''}`}
+                          title={`${tab.profile.username}@${tab.profile.host}:${tab.profile.port}`}
+                          onClick={() => activateSession(tab.sessionId)}
                         >
-                          {p.panel!.title}
-                        </button>
-                      ))}
+                          <span className={`session-tab-dot status-${st}`} />
+                          <span className="session-tab-name">{tab.profile.name}</span>
+                          <button
+                            className="session-tab-close"
+                            title="关闭会话"
+                            aria-label="关闭会话"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              closeSession(tab)
+                            }}
+                          >
+                            <CloseIcon size={11} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                    {appScopePlugins.map((p) => (
+                      <button
+                        key={p.id}
+                        className={`session-tab app-panel${appPanelActive === p.id ? ' active' : ''}`}
+                        onClick={() => setAppPanelActive(appPanelActive === p.id ? null : p.id)}
+                      >
+                        {p.panel!.title}
+                      </button>
+                    ))}
                   </div>
                 )}
 
-                {session && (
-                  <div className={`tab-pane${activeTab === 'terminal' ? '' : ' hidden'}`}>
-                    <TerminalView sessionId={session.sessionId} />
-                  </div>
-                )}
-                {session &&
-                  activeTab === 'terminal' &&
-                  enabledPlugins
-                    .filter((p) => p.widget && p.widget.placement === 'terminal-bottom')
-                    .map((p) => (
-                      <div className="terminal-bar" key={p.id}>
-                        {p.widget &&
-                          createElement(p.widget.Component as ComponentType<SessionPanelProps>, {
-                            sessionId: session.sessionId,
-                            profile: session.profile
-                          })}
-                      </div>
-                    ))}
-                {session &&
-                  enabledPlugins
-                    .filter((p) => p.panel && (p.panel.scope ?? 'session') === 'session')
-                    .map((p) => (
-                      <div className={`tab-pane${activeTab === p.id ? '' : ' hidden'}`} key={p.id}>
-                        {p.panel && renderPanel(p, session, activeTab === p.id)}
-                      </div>
-                    ))}
+                {sessions.map((tab) => {
+                  const isActive = tab.sessionId === activeSessionId && !appPanelActive
+                  const live = liveIn(statusMap, tab.sessionId)
+                  const st = statusMap[tab.sessionId]
+                  return (
+                    <div
+                      key={tab.sessionId}
+                      className={`session-view${isActive ? '' : ' hidden'}`}
+                    >
+                      {live && (
+                        <div className="tabs">
+                          <button
+                            className={`tab${tab.panelTab === 'terminal' ? ' active' : ''}`}
+                            onClick={() =>
+                              setSessions((list) =>
+                                list.map((t) =>
+                                  t.sessionId === tab.sessionId ? { ...t, panelTab: 'terminal' } : t
+                                )
+                              )
+                            }
+                          >
+                            终端
+                          </button>
+                          {enabledPlugins
+                            .filter((p) => p.panel && (p.panel.scope ?? 'session') === 'session')
+                            .map((p) => (
+                              <button
+                                key={p.id}
+                                className={`tab${tab.panelTab === p.id ? ' active' : ''}`}
+                                onClick={() =>
+                                  setSessions((list) =>
+                                    list.map((t) =>
+                                      t.sessionId === tab.sessionId ? { ...t, panelTab: p.id } : t
+                                    )
+                                  )
+                                }
+                              >
+                                {p.panel!.title}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+
+                      {live && (
+                        <div className={`tab-pane${tab.panelTab === 'terminal' ? '' : ' hidden'}`}>
+                          <TerminalView sessionId={tab.sessionId} />
+                        </div>
+                      )}
+                      {live &&
+                        tab.panelTab === 'terminal' &&
+                        enabledPlugins
+                          .filter((p) => p.widget && p.widget.placement === 'terminal-bottom')
+                          .map((p) => (
+                            <div className="terminal-bar" key={p.id}>
+                              {p.widget &&
+                                createElement(p.widget.Component as ComponentType<SessionPanelProps>, {
+                                  sessionId: tab.sessionId,
+                                  profile: tab.profile
+                                })}
+                            </div>
+                          ))}
+                      {live &&
+                        enabledPlugins
+                          .filter((p) => p.panel && (p.panel.scope ?? 'session') === 'session')
+                          .map((p) => (
+                            <div
+                              className={`tab-pane${tab.panelTab === p.id ? '' : ' hidden'}`}
+                              key={p.id}
+                            >
+                              {p.panel && renderPanel(p, tab, isActive && tab.panelTab === p.id)}
+                            </div>
+                          ))}
+
+                      {!live && (
+                        <div className={st?.status === 'error' ? 'error-state' : 'empty-state'}>
+                          <h2>{st?.status === 'error' ? '连接失败' : '连接已断开'}</h2>
+                          {st?.message && <p className="error-message">{st.message}</p>}
+                          <button className="btn btn-primary" onClick={() => void connect(tab.profile)}>
+                            重新连接
+                          </button>
+                        </div>
+                      )}
+
+                      {tab.sessionId === overlaySessionId && connectOverlay && (
+                        <div className={`connect-overlay${connectOverlay === 'leaving' ? ' closing' : ''}`}>
+                          <div
+                            className={`connect-logo-stage${connectOverlay === 'settling' ? ' done' : ''}`}
+                            aria-hidden="true"
+                          >
+                            <GooeyLogoIcon size={96} />
+                            <img className="connect-logo-tile" src={mysshIcon} alt="" />
+                          </div>
+                          <p className="connect-label">正在连接 {tab.profile.host}…</p>
+                          <div className="connect-progress">
+                            <div className="connect-progress-inner" style={{ width: `${smoothProgress}%` }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
                 {enabledPlugins
-                  .filter((p) => p.panel && p.panel.scope === 'app' && activeTab === p.id)
+                  .filter((p) => p.panel && p.panel.scope === 'app' && appPanelActive === p.id)
                   .map((p) => (
                     <div className="tab-pane" key={p.id}>
-                      {renderPanel(p, session, true)}
+                      {renderPanel(p, activeSession, true)}
                     </div>
                   ))}
 
-                {!session && activeTab === 'terminal' && (
+                {sessions.length === 0 && !appPanelActive && (
                   <>
                     {error ? (
                       <div className="error-state">
@@ -454,22 +660,6 @@ export default function App(): React.JSX.Element {
                     )}
                   </>
                 )}
-
-                {connectOverlay && session && (
-                  <div className={`connect-overlay${connectOverlay === 'leaving' ? ' closing' : ''}`}>
-                    <div
-                      className={`connect-logo-stage${connectOverlay === 'settling' ? ' done' : ''}`}
-                      aria-hidden="true"
-                    >
-                      <GooeyLogoIcon size={96} />
-                      <img className="connect-logo-tile" src={mysshIcon} alt="" />
-                    </div>
-                    <p className="connect-label">正在连接 {session.profile.host}…</p>
-                    <div className="connect-progress">
-                      <div className="connect-progress-inner" style={{ width: `${smoothProgress}%` }} />
-                    </div>
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -477,13 +667,16 @@ export default function App(): React.JSX.Element {
       </div>
 
       <footer className="statusbar">
-        <span className="statusbar-left">{sessionLabel}</span>
-        <span className={`statusbar-right status-${status?.status ?? 'idle'}`}>
-          {status?.status === 'connected' ? (
+        <span className="statusbar-left">
+          {sessionLabel}
+          {sessions.length > 1 && activeIndex >= 0 && ` (${activeIndex + 1}/${sessions.length})`}
+        </span>
+        <span className={`statusbar-right status-${activeStatus?.status ?? 'idle'}`}>
+          {activeStatus?.status === 'connected' ? (
             <CheckIcon size={12} />
-          ) : status?.status === 'connecting' ? (
+          ) : activeStatus?.status === 'connecting' ? (
             <span className="status-spinner" />
-          ) : status?.status === 'error' ? (
+          ) : activeStatus?.status === 'error' ? (
             <CloseIcon size={12} />
           ) : (
             <span className="status-dot" />
