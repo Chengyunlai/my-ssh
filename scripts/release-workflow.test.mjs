@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const workflow = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8')
+const workflow = readFileSync(
+  new URL('../.github/workflows/release.yml', import.meta.url),
+  'utf8'
+).replaceAll('\r\n', '\n')
 
 describe('release workflow', () => {
   const buildJob = workflow.match(/^  build:\n([\s\S]*?)(?=^  publish:)/m)?.[0] ?? ''
