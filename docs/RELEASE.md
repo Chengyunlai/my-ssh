@@ -36,7 +36,7 @@ GH_TOKEN=<有 repo 权限的 token> npm run dist -- --publish always
 electron-builder 会自动上传:
 
 - Windows:`MySSH-<ver>-win-x64.exe`(NSIS)+ `latest.yml`
-- macOS:`MySSH-<ver>-mac-<arch>.dmg` + `latest-mac.yml`
+- macOS:`MySSH-<ver>-mac-<arch>.dmg` + `.zip` + `latest-mac.yml`(`zip` 供自动更新)
 - Linux:`MySSH-<ver>-linux-x86_64.AppImage` + `latest-linux.yml`
 
 `latest*.yml` 是更新的“索引”,`electron-updater` 靠它判断版本与下载增量,必须与
@@ -54,7 +54,7 @@ electron-builder 会自动上传:
 | --- | --- | --- |
 | Windows(NSIS) | 支持 | 无额外要求 |
 | Linux(AppImage) | 支持 | 无额外要求 |
-| macOS(dmg) | 支持 | **必须 Developer ID 签名**,否则 Squirrel.Mac 拒绝替换 |
+| macOS(zip 更新载体;dmg 手动安装) | 支持 | **必须 Developer ID 签名**,否则 Squirrel.Mac 拒绝替换 |
 
 macOS 未签名/临时签名(dev 的 ad-hoc)时,自动更新不可用,用户需手动下载 dmg
 替换应用;发布正式版前在 `electron-builder.yml` 配置证书(或 CI 里签名)。
@@ -78,8 +78,8 @@ MYSSH_UPDATE_URL=https://your-server.com/myssh/dist npm run dist
 ## 7. 发布检查清单
 
 - [ ] `package.json` 版本已递增,git tag 已打
-- [ ] `npm run typecheck` 与 `npm run build` 通过
-- [ ] `npm run dist -- --publish never` 产物齐全(dmg / exe / AppImage + latest*.yml)
+- [ ] `make check` 通过(lint / typecheck / test / build)
+- [ ] `npm run dist -- --publish never` 产物齐全(dmg + zip / exe / AppImage + latest*.yml)
 - [ ] 已发布到 GitHub Releases(或自定义源),且 `latest*.yml` 与安装包同目录
 - [ ] macOS 正式版已 Developer ID 签名
 - [ ] 在旧版本上点「检查更新」能发现并完成升级

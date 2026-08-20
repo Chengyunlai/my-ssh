@@ -17,10 +17,12 @@ make install   # npm ci,基于 package-lock.json 可复现安装
 | 命令 | 说明 |
 | --- | --- |
 | `make dev` | 启动开发模式(主进程 / 渲染进程热更新) |
+| `make lint` | Oxc 静态代码检查 |
+| `make test` | Vitest 单元测试 |
 | `make typecheck` | 类型检查(main + renderer + shared) |
 | `make build` | 构建到 `out/` |
-| `make dist` | 本地打包 macOS dmg 到 `dist/` |
-| `make check` | 提交前自检:typecheck + build |
+| `make dist` | 本地打包 macOS dmg + zip 到 `dist/` |
+| `make check` | 提交前自检:lint + typecheck + test + build |
 | `make clean` | 清理 `out/`、`dist/` |
 
 所有命令都可在 `package.json` 中找到对应的 npm script,Makefile 只是入口封装。
@@ -41,6 +43,15 @@ src/
 - **插件**:内置插件见 [`docs/PLUGIN.md`](docs/PLUGIN.md),改插件行为前先读;插件注册表在 `src/renderer/src/plugins/`。
 - **UI 动效与设计规范**:见 [`docs/UI.md`](docs/UI.md)。评审 UI 改动须按其中「评审清单」逐项核对。
 - **新增依赖**:用 `npm install <pkg>`(会更新 lockfile),提交时必须包含 `package-lock.json`。
+- **架构边界**:进程依赖方向和功能落点见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
+- **Agent 并行开发**:任务认领、共享文件和交接规则见 [`AGENTS.md`](AGENTS.md)。
+
+## Issue 规范
+
+- Bug、功能建议和工程任务分别使用对应 Issue Form,先搜索已有 Issue,避免重复。
+- Issue 必须说明背景、范围 / 非目标、验收条件、风险和依赖;日志与截图必须脱敏。
+- 可并行任务要声明模块或文件边界,共享文件指定唯一负责人。
+- 安全漏洞不得公开提交,按 [`SECURITY.md`](SECURITY.md) 私密报告。
 
 ## 提交规范(Conventional Commits)
 
@@ -58,11 +69,16 @@ src/
 
 ## 分支与 PR 流程
 
-1. 从最新 `master` 拉分支:`git checkout -b feat/sftp-recursive-upload`(命名建议 `type/简述`)。
-2. 开发并本地自检:`make check` 必须通过。
-3. 涉及插件 / UI 改动,对照 `docs/PLUGIN.md`、`docs/UI.md` 检查。
-4. 推送分支,发起 PR 到 `master`,在描述中说明:改了什么、为什么、如何验证(附截图更佳)。
-5. 维护者 review 后合并;CI 会在 PR 上自动跑类型检查与构建。
+1. 关联或创建 Issue,确认范围与验收条件。
+2. 从最新 `master` 拉分支:`git checkout -b feat/sftp-recursive-upload`(命名建议 `type/简述`)。
+3. 开发并本地自检:`make check` 必须通过。
+4. 涉及插件 / UI 改动,对照 `docs/PLUGIN.md`、`docs/UI.md` 检查。
+5. 推送分支,发起 PR 到 `master`,按模板说明:改了什么、为什么、如何验证、风险与回滚方式。
+6. CI 自动执行 lint、类型检查、单元测试、构建和 critical 级生产依赖审计。
+7. 至少一名 CODEOWNER Review 后合并;推荐 squash merge,合并后删除功能分支。
+
+维护者应在 GitHub 为 `master` 开启分支保护:禁止直接推送,要求 `CI / Lint, Typecheck, Test & Build`
+通过、至少一次批准并要求对话已解决。仓库配置未启用这些规则时,文档约定不能替代远端门禁。
 
 ## 发布流程(版本迭代)
 
@@ -73,7 +89,7 @@ make release-patch   # 或 release-minor / release-major
 ```
 
 该命令会:更新 `package.json` 版本号 → 生成提交 → 打 `vX.Y.Z` tag → 推送。
-推送后 GitHub Actions 自动构建 **macOS(dmg) / Windows(nsis) / Linux(AppImage)** 并发布到
+推送后 GitHub Actions 自动构建 **macOS(dmg + zip) / Windows(nsis) / Linux(AppImage)** 并发布到
 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases),用户直接下载安装即可。
 
 手工发布(不常用):
@@ -82,7 +98,8 @@ make release-patch   # 或 release-minor / release-major
 git tag v0.1.1 && git push origin v0.1.1
 ```
 
-发布前请确认 README 中的路线图、依赖说明与本次版本一致;破坏性变更要在 Release Notes 中注明。
+发布前请确认 [`ROADMAP.md`](ROADMAP.md)、README、依赖说明与本次版本一致;破坏性变更要在
+Release Notes 中注明。
 
 发布前把本版本的变更整理进 [`CHANGELOG.md`](CHANGELOG.md)(开发者日志),与版本号提交一起推送。
 
@@ -91,3 +108,4 @@ git tag v0.1.1 && git push origin v0.1.1
 - 严禁提交任何私钥、密码、`profiles.json` 等敏感数据;`*.log`、`node_modules/`、`out/`、`dist/` 已在 `.gitignore`。
 - 凭据落盘必须走 Electron `safeStorage` 加密,不要自研明文存储。
 - 外部插件运行在受限环境,插件只能调用 `window.ssh.*`;新增主进程能力时评估最小暴露面。
+- `npm audit` 报告必须人工审查;CI 阻止 critical 级生产依赖漏洞,较低级别风险进入 Issue 跟踪。

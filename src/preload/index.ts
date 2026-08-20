@@ -2,7 +2,6 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type {
   InstalledPlugin,
   MarketRegistry,
-  Profile,
   LogInfo,
   SessionStatus,
   ShellStatus,

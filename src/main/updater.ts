@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
-import type { UpdateState, UpdateStatus } from '@shared/types'
+import type { UpdateState } from '@shared/types'
 import { logError } from './logger'
 
 let state: UpdateState = { status: 'disabled', currentVersion: app.getVersion() }
