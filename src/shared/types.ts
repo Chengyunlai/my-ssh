@@ -149,6 +149,9 @@ export interface StorageInfo {
   plugins: Record<string, number>
 }
 
+/** 插件支持的运行平台(Node process.platform 值);缺省表示全平台 */
+export type PluginPlatform = 'win32' | 'darwin' | 'linux'
+
 export interface MarketPluginInfo {
   id: string
   name: string
@@ -161,6 +164,8 @@ export interface MarketPluginInfo {
   minAppVersion?: string
   /** 最高兼容 MySSH 版本(可选) */
   maxAppVersion?: string
+  /** 支持的运行平台;缺省表示全平台,不含当前平台时禁止安装 */
+  platforms?: PluginPlatform[]
   /** 官方插件标记:仅由市场 registry 构建方(官方清单)加盖,插件自身声明无效 */
   official?: boolean
   defaultEnabled?: boolean
@@ -189,6 +194,8 @@ export interface InstalledPlugin {
   /** 兼容 MySSH 版本区间:安装时从 registry 盖章写入 manifest */
   minAppVersion?: string
   maxAppVersion?: string
+  /** 支持的运行平台:安装时从 registry 盖章写入 manifest */
+  platforms?: PluginPlatform[]
   /** 官方标记:安装时从 registry 盖章写入 manifest,可信来源 */
   official?: boolean
   defaultEnabled?: boolean

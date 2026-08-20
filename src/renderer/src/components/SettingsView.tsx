@@ -8,6 +8,7 @@ import type {
   UpdateState
 } from '@shared/types'
 import { isVersionSupported } from '@shared/versions'
+import type { PluginPlatform } from '@shared/types'
 import { loadPluginStates, savePluginState, type PluginStates } from '../plugins'
 import type { MySshPlugin } from '../plugins/types'
 import { formatSize } from '../utils/format'
@@ -48,6 +49,22 @@ function supportText(min?: string, max?: string): string {
   if (min) return `需要 MySSH ${min}+`
   if (max) return `最高支持 MySSH ${max}`
   return ''
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  win32: 'Windows',
+  darwin: 'macOS',
+  linux: 'Linux'
+}
+
+function platformLabel(p: string): string {
+  return PLATFORM_LABELS[p] ?? p
+}
+
+/** 平台要求文本;全平台(未声明)返回空 */
+function platformsText(platforms?: string[]): string {
+  if (!platforms?.length) return ''
+  return `仅支持 ${platforms.map(platformLabel).join(' / ')}`
 }
 
 export default function SettingsView({
@@ -92,6 +109,7 @@ export default function SettingsView({
         (!categoryFilter || p.category === categoryFilter)
     ) ?? []
   const appVersion = appInfo?.version ?? ''
+  const platform = window.ssh.platform
   const isCompatible = (min?: string, max?: string): boolean =>
     !appVersion || isVersionSupported(appVersion, { min, max })
 
@@ -339,6 +357,7 @@ export default function SettingsView({
                       {storage ? ` · 占用 ${formatSize(psize)}` : ''}
                       {supportText(p.minAppVersion, p.maxAppVersion) &&
                         ` · ${supportText(p.minAppVersion, p.maxAppVersion)}`}
+                      {platformsText(p.platforms) && ` · ${platformsText(p.platforms)}`}
                     </span>
                   </div>
                   <span className="plugin-table-version">v{p.version}</span>
@@ -447,6 +466,16 @@ export default function SettingsView({
                   const isInstalling = installing === p.id
                   const isLatest = iv !== undefined && iv.version === p.version
                   const compatible = isCompatible(p.minAppVersion, p.maxAppVersion)
+                  const platText = platformsText(p.platforms)
+                  // 环境检测:声明了平台且不含当前平台时禁止安装
+                  const platformOk =
+                    !p.platforms?.length || p.platforms.includes(platform as PluginPlatform)
+                  const installable = compatible && platformOk
+                  const blockedTitle = !compatible
+                    ? `当前 MySSH ${appVersion},不满足插件版本要求:${supportText(p.minAppVersion, p.maxAppVersion)}`
+                    : !platformOk
+                      ? `此插件 ${platText},当前系统为 ${platformLabel(platform)},不满足环境要求`
+                      : undefined
                   return (
                     <div className="settings-table-row" key={p.id}>
                       <div className="plugin-table-name">
@@ -463,18 +492,15 @@ export default function SettingsView({
                           {p.author ? `作者:${p.author} · ` : ''}id: {p.id}
                           {supportText(p.minAppVersion, p.maxAppVersion) &&
                             ` · ${supportText(p.minAppVersion, p.maxAppVersion)}`}
+                          {platText && ` · ${platText}`}
                         </span>
                       </div>
                       <span className="plugin-table-version">v{p.version}</span>
                       <span className="plugin-table-desc">{p.description}</span>
                       <button
                         className="btn btn-sm"
-                        disabled={isInstalling || !compatible}
-                        title={
-                          compatible
-                            ? undefined
-                            : `当前 MySSH ${appVersion},不满足插件版本要求:${supportText(p.minAppVersion, p.maxAppVersion)}`
-                        }
+                        disabled={isInstalling || !installable}
+                        title={blockedTitle}
                         onClick={() => void installPlugin(p.id)}
                       >
                         {isInstalling ? '安装中…' : iv ? (isLatest ? '重新安装' : '更新') : '安装'}

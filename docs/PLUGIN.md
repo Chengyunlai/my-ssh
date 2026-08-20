@@ -18,6 +18,7 @@ definePlugin({
   category: 'terminal',             // 分类 id(官方分类表,见 §5)
   minAppVersion: '0.1.0',           // 最低兼容 MySSH 版本(semver)
   maxAppVersion: '0.2.0',           // 可选:最高兼容 MySSH 版本
+  platforms: ['win32'],             // 可选:支持的运行平台(win32/darwin/linux),缺省为全平台
   official: true,                   // 官方标记:内置可直接声明;外部插件以 registry 盖章为准
   builtin: true,                    // 内置插件标记(外部插件置 false)
   defaultEnabled: true,             // 首次启动默认状态,缺省为启用
@@ -145,6 +146,22 @@ definePlugin({
 - 破坏性 API 变更必须收窄 `maxAppVersion`(或升 `major`);纯新增保持 `minAppVersion` 不变
 - 官方插件建议始终声明 `minAppVersion`,历史版本兼容性用测试矩阵保证(见下)
 
+### 平台环境声明
+
+插件依赖特定操作系统能力时(如 WSL 仅存在于 Windows),必须声明支持平台:
+
+```ts
+definePlugin({
+  // ...
+  platforms: ['win32']   // 可选:'win32' | 'darwin' | 'linux';缺省为全平台
+})
+```
+
+- 声明后,市场列表显示「仅支持 Windows / macOS / Linux」,当前系统不在其中的插件
+  「安装」按钮置灰,悬停提示当前平台与插件要求
+- 安装时主进程二次校验 `process.platform`,绕过界面直接调用也会被拒绝
+- 治理规则与版本区间一致:registry 盖章 > 插件自身声明,安装时固化进 manifest
+
 ### 自动化测试与接入验证(外部插件)
 
 `my-ssh-plug` 仓库 CI 必须全部通过后才允许发布 registry:
@@ -209,6 +226,7 @@ definePlugin({
 - [ ] `description` 清楚说明功能与适用场景
 - [ ] `category` 使用官方分类表 id(见 §5),未知分类不通过审查
 - [ ] 已声明 `minAppVersion` / `maxAppVersion`,且与 CI 兼容矩阵一致
+- [ ] 依赖特定操作系统时已声明 `platforms`,且在非目标平台上有明确的不可用说明
 - [ ] 非必需功能设置 `defaultEnabled: false`,不打扰默认用户
 - [ ] 外部插件确认 react 已外部化(产物里 `from "react"` 保持裸导入)
 - [ ] 所有主进程能力已通过 `SshApi` 暴露,未绕过 IPC

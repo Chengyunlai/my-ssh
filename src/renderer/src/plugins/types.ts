@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { Profile } from '@shared/types'
+import type { PluginPlatform, Profile } from '@shared/types'
 
 export interface SessionPanelProps {
   sessionId: string
@@ -23,6 +23,8 @@ export interface MySshPlugin {
   /** 兼容 MySSH 版本区间;外部插件以安装清单为准 */
   minAppVersion?: string
   maxAppVersion?: string
+  /** 支持的运行平台;缺省表示全平台,外部插件以安装清单为准 */
+  platforms?: PluginPlatform[]
   /** 官方插件标记:内置插件由核心仓库声明;外部插件以安装清单为准 */
   official?: boolean
   /** 随应用内置分发(仍可被用户禁用) */

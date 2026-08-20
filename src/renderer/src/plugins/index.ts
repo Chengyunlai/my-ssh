@@ -48,13 +48,14 @@ async function loadExternalPlugins(): Promise<MySshPlugin[]> {
           const mod = (await import(/* @vite-ignore */ info.entryUrl)) as { default?: unknown }
           const p = mod.default as MySshPlugin
           if (p && p.id && !loaded.some((x) => x.id === p.id)) {
-            // 治理字段(分类/兼容区间/官方)只信安装清单(安装时从 registry 盖章),插件自身声明无效
+            // 治理字段(分类/兼容区间/平台/官方)只信安装清单(安装时从 registry 盖章),插件自身声明无效
             loaded.push({
               ...p,
               builtin: false,
               category: info.category,
               minAppVersion: info.minAppVersion,
               maxAppVersion: info.maxAppVersion,
+              platforms: info.platforms,
               official: info.official === true
             })
           }

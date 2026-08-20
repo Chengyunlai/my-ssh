@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { compareVersions } from '@shared/versions'
+import type { PluginPlatform } from '@shared/types'
 
 export interface MarketPluginInfo {
   id: string
@@ -13,6 +14,7 @@ export interface MarketPluginInfo {
   category?: string
   minAppVersion?: string
   maxAppVersion?: string
+  platforms?: PluginPlatform[]
   /** 官方插件标记:仅由市场 registry 构建方(官方清单)加盖 */
   official?: boolean
   defaultEnabled?: boolean
@@ -39,6 +41,7 @@ export interface InstalledPlugin {
   category?: string
   minAppVersion?: string
   maxAppVersion?: string
+  platforms?: PluginPlatform[]
   /** 官方标记:安装时从 registry 盖章写入 manifest */
   official?: boolean
   defaultEnabled?: boolean
@@ -48,6 +51,16 @@ export interface InstalledPlugin {
 
 function pluginsRoot(): string {
   return path.join(app.getPath('userData'), 'plugins')
+}
+
+const PLATFORM_LABELS: Record<PluginPlatform, string> = {
+  win32: 'Windows',
+  darwin: 'macOS',
+  linux: 'Linux'
+}
+
+function platformLabel(p: PluginPlatform): string {
+  return PLATFORM_LABELS[p] ?? p
 }
 
 async function readUrl(url: string): Promise<Buffer> {
@@ -93,6 +106,7 @@ export async function listInstalled(): Promise<InstalledPlugin[]> {
         category?: string
         minAppVersion?: string
         maxAppVersion?: string
+        platforms?: PluginPlatform[]
         official?: boolean
         defaultEnabled?: boolean
       }
@@ -105,6 +119,7 @@ export async function listInstalled(): Promise<InstalledPlugin[]> {
         category: m.category,
         minAppVersion: m.minAppVersion,
         maxAppVersion: m.maxAppVersion,
+        platforms: m.platforms,
         official: m.official,
         defaultEnabled: m.defaultEnabled,
         entryUrl: `myssh-plugin://${id}/${m.version}/entry.js`
@@ -130,6 +145,13 @@ export async function install(registryUrl: string, pluginId: string): Promise<In
   }
   if (info.maxAppVersion && compareVersions(current, info.maxAppVersion) > 0) {
     throw new Error(`插件最高支持 MySSH ${info.maxAppVersion}(当前 ${current}),请升级插件或等待新版本`)
+  }
+
+  // 平台校验:插件声明了支持平台时,当前环境不在其中则拒绝安装
+  if (info.platforms?.length && !info.platforms.includes(process.platform as PluginPlatform)) {
+    throw new Error(
+      `插件仅支持 ${info.platforms.map(platformLabel).join(' / ')},当前平台不满足要求`
+    )
   }
 
   const buf = await readUrl(info.entryUrl)
@@ -163,6 +185,7 @@ export async function install(registryUrl: string, pluginId: string): Promise<In
     category: info.category,
     minAppVersion: info.minAppVersion,
     maxAppVersion: info.maxAppVersion,
+    platforms: info.platforms,
     official: info.official,
     defaultEnabled: info.defaultEnabled
   }
