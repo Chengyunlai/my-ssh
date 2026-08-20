@@ -12,6 +12,7 @@ mac:
   icon: build/icon.icns
   target:
     - dmg
+    - zip # electron-updater 在 macOS 只认 zip 产物(dmg 仅供手动安装)
 win:
   icon: build/icon.ico
   target:

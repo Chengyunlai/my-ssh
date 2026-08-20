@@ -13,6 +13,15 @@
 
 <!-- 新版本的变更在这里积累,发版时把内容挪到下方新版本条目里。 -->
 
+## [1.1.3] - 2026-08-20
+
+- **修复**:macOS 检查更新报「ZIP file not provided」— macOS 产物补充 `zip` 目标(electron-updater 在 macOS 只认 zip 产物,dmg 仅供手动安装),自动更新链路恢复可用
+
+- **工程化**:新增 PR / master CI,统一执行 lint、类型检查、Vitest、构建和 critical 级依赖审计;Release workflow 收紧权限并固定 Action SHA
+- **工程化**:引入 Oxc lint 与 Vitest 基础测试,`make check` 统一为 lint + typecheck + test + build
+- **协作**:新增 Agent 多人协作、Issue Forms、PR 模板、CODEOWNERS 和 Dependabot 配置
+- **文档**:新增路线图、架构说明与安全策略,同步 macOS dmg + zip 发布说明
+
 ## [1.1.2] - 2026-08-20
 
 - **改进**:终端渲染性能大幅优化 — xterm 切换 WebGL 渲染器(GPU 加速,无 GPU 环境自动回退 DOM 渲染),大流量输出与 TUI 全屏重绘显著更流畅
