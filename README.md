@@ -32,11 +32,11 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases) 下载对应平台安装包即可。当前最新版本 **v1.0.1**:
+从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases/latest) 下载对应平台的最新版安装包即可:
 
-- macOS:[`MySSH-1.0.1-mac-arm64.dmg`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.1/MySSH-1.0.1-mac-arm64.dmg)
-- Windows:[`MySSH-1.0.1-win-x64.exe`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.1/MySSH-1.0.1-win-x64.exe)
-- Linux:[`MySSH-1.0.1-linux-x86_64.AppImage`](https://github.com/Chengyunlai/my-ssh/releases/download/v1.0.1/MySSH-1.0.1-linux-x86_64.AppImage)
+- macOS:`.dmg`(Apple Silicon)
+- Windows:`.exe`
+- Linux:`.AppImage`
 
 每次发布(打 `vX.Y.Z` tag)由 CI 自动打包并上传,无需自己构建。
 
@@ -193,12 +193,3 @@ https://chengyunlai.github.io/my-ssh-plug/registry.json
 - 传输在主进程完成,分块并行窗口(`fastGet`/`fastPut`),避免每块数据经 IPC 往返,本地磁盘直写
 - 下载方向实测受服务器出站带宽限制(~2.8Mbps),客户端方案无差异;上传方向并行窗口已跑满
 - 实时进度(字节/速度)通过 `sftp:progress` 事件推送,失败自动清理本地/远端半成品文件
-
-## 路线图(建议下一步)
-
-- [ ] 多会话标签页
-- [ ] 传输任务取消 / 断点续传
-- [ ] 文件夹递归上传下载
-- [ ] 会话断线自动重连
-- [ ] 隧道/端口转发配置
-- [ ] 密码明文展示开关(当前输入后仅加密落盘)
