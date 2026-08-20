@@ -40,10 +40,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: '其他'
 }
 
-function categoryLabel(cat?: string): string {
-  return cat ? (CATEGORY_LABELS[cat] ?? cat) : ''
-}
-
 function supportText(min?: string, max?: string): string {
   if (min && max) return `兼容 MySSH ${min} ~ ${max}`
   if (min) return `需要 MySSH ${min}+`

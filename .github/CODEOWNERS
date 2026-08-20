@@ -1,0 +1,9 @@
+# 默认由仓库维护者负责最终 Review。
+* @Chengyunlai
+
+# 高风险边界显式列出，便于未来增加专项 Reviewer。
+/src/main/ @Chengyunlai
+/src/preload/ @Chengyunlai
+/src/shared/ @Chengyunlai
+/.github/workflows/ @Chengyunlai
+/electron-builder.yml @Chengyunlai

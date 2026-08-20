@@ -1,0 +1,82 @@
+name: Bug 报告
+description: 报告可复现的错误、崩溃或行为异常
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: checkboxes
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索现有 Issue，确认没有重复报告。
+          required: true
+        - label: 我已移除日志和截图中的密码、私钥、令牌及真实服务器信息。
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: MySSH 版本
+      placeholder: 例如 1.1.2
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options: [macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 建议优先级
+      description: 维护者会根据影响范围和复现情况最终确认。
+      options:
+        - P0 - 数据丢失、凭据泄露或应用完全不可用
+        - P1 - 核心功能严重受阻且没有可行绕过方式
+        - P2 - 功能异常但存在绕过方式
+        - P3 - 轻微问题或体验改进
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 说明实际发生了什么以及造成的影响。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 最小复现步骤
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 观察到……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影响范围与非目标
+      description: 哪些连接、文件或场景受影响；哪些相邻问题不属于本报告。
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: 风险与依赖
+      description: 是否涉及数据、凭据、兼容性；是否依赖特定服务器、插件或外部服务。
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 已脱敏的日志或截图
+      description: 不要包含凭据、访问令牌、私钥或可识别的服务器信息。
+      render: shell

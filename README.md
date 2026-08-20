@@ -9,7 +9,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/license/Chengyunlai/my-ssh" alt="License" />
   <img src="https://img.shields.io/github/v/release/Chengyunlai/my-ssh" alt="Release" />
-  <img src="https://img.shields.io/github/actions/workflow/status/Chengyunlai/my-ssh/release.yml?branch=master" alt="Build" />
+  <img src="https://img.shields.io/github/actions/workflow/status/Chengyunlai/my-ssh/ci.yml?branch=master" alt="CI" />
 </p>
 
 <p align="center">
@@ -75,6 +75,8 @@ open /Applications/MySSH.app
 - 凭据加密:Electron `safeStorage`(macOS 下走 Keychain),落盘为 `profiles.json`
 - 插件系统:内置插件(随应用分发)+ 外部插件(独立市场仓库 `my-ssh-plug` 分发,可安装 / 更新 / 卸载)
 - UI 动效与设计规范:见 [`docs/UI.md`](docs/UI.md)(基于 emilkowalski/skills 设计工程哲学)
+- 进程边界与关键数据流:见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 产品与工程方向:见 [`ROADMAP.md`](ROADMAP.md)
 
 ## 开发
 
@@ -86,10 +88,12 @@ make dev       # 启动开发模式
 ## 常用命令
 
 ```bash
+make lint              # 静态代码检查
+make test              # 单元测试
 make typecheck         # 类型检查(main + renderer)
 make build             # 构建到 out/
-make dist              # 本地打包 macOS dmg(dist/)
-make check             # 提交前自检:typecheck + build
+make dist              # 本地打包 macOS dmg + zip(dist/)
+make check             # 提交前自检:lint + typecheck + test + build
 make release-patch     # 版本迭代:patch 并推送 tag,CI 自动打包发布
 make release-minor     # 版本迭代:minor 并推送 tag
 make release-major     # 版本迭代:major 并推送 tag
@@ -99,16 +103,25 @@ make release-major     # 版本迭代:major 并推送 tag
 
 ## 贡献
 
-欢迎提交 PR。开发约定、提交规范、PR 流程与发布说明见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+欢迎提交 Issue 和 PR。开发约定、提交规范、PR 流程与发布说明见
+[`CONTRIBUTING.md`](CONTRIBUTING.md)；AI Agent / 多人并行开发遵循 [`AGENTS.md`](AGENTS.md)，
+安全问题请按 [`SECURITY.md`](SECURITY.md) 私密报告。
 
 ## 目录结构
 
 ```text
-Makefile          # 开发命令入口(install / dev / typecheck / build / dist / release-*)
+Makefile          # 开发命令入口(install / dev / lint / test / typecheck / build / dist / release-*)
 LICENSE           # MIT 协议
 CHANGELOG.md      # 开发者日志:每次版本迭代的内容记录
 CONTRIBUTING.md   # 贡献指南(开发约定 / 提交规范 / 发布流程)
-.github/workflows/release.yml  # CI:打 tag 后自动打包并发布 GitHub Releases
+AGENTS.md         # AI Agent / 多人并行开发与交接规范
+ROADMAP.md        # Now / Next / Later 路线图
+SECURITY.md       # 漏洞报告与安全开发策略
+.github/
+  ISSUE_TEMPLATE/           # Bug / Feature / 工程任务 Issue Forms
+  pull_request_template.md  # PR 验证、风险与 Review 清单
+  workflows/ci.yml          # PR / master:lint + typecheck + test + build
+  workflows/release.yml     # tag:三平台打包并发布 GitHub Releases
 src/
   main/        # Electron 主进程:窗口、profiles 加密存储、ssh2 会话
   preload/     # contextBridge 桥接,向渲染进程暴露 window.ssh API
@@ -116,7 +129,10 @@ src/
   shared/      # 主进程与渲染进程共享的类型
   renderer/src/plugins/  # 插件注册表(<id>/index.ts + 面板组件)
 docs/
+  ARCHITECTURE.md  # 进程边界、依赖方向与关键数据流
+  adr/             # 跨模块架构决策记录
   PLUGIN.md    # 插件开发规范
+  RELEASE.md   # 发布与自动更新规范
   UI.md        # UI 动效与设计规范
 ```
 

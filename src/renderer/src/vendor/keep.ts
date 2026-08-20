@@ -36,7 +36,7 @@ import {
   Fragment as ReactFragment,
   __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE
 } from './react'
-import { jsx, jsxs, Fragment } from './react-jsx-runtime'
+import { jsx, jsxs, Fragment as JsxFragment } from './react-jsx-runtime'
 
 export function keepPluginRuntime(): void {
   ;(globalThis as { __pluginRuntime?: unknown }).__pluginRuntime = {
@@ -74,6 +74,7 @@ export function keepPluginRuntime(): void {
     __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,
     Fragment: ReactFragment,
     jsx,
-    jsxs
+    jsxs,
+    jsxFragment: JsxFragment
   }
 }

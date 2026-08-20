@@ -1,0 +1,53 @@
+name: 功能建议
+description: 描述用户问题、目标和可验证的结果
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 建议优先级
+      description: 维护者会结合路线图和影响范围最终确认。
+      options:
+        - P1 - 核心工作流缺失且没有可行替代
+        - P2 - 明显改善常用工作流
+        - P3 - 可选增强或长期方向
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 描述使用场景与阻碍，不要只写解决方案名称。
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 期望结果与验收条件
+      description: 写出完成后可以观察或验证的行为。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 如有界面草图、交互流程或技术约束可在此补充。
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: 非目标
+      description: 明确本次不需要解决的相邻问题。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的替代方案
+  - type: textarea
+    id: risks
+    attributes:
+      label: 风险与依赖
+      description: 说明兼容性、安全、性能、外部服务及前置任务。
+    validations:
+      required: true

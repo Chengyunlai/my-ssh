@@ -1,0 +1,47 @@
+name: 工程任务
+description: 用于重构、CI、依赖、安全和文档治理工作
+title: "[Task]: "
+labels: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 建议优先级
+      options:
+        - P0 - 阻断发布或存在紧急安全风险
+        - P1 - 当前版本周期必须解决
+        - P2 - 计划内工程改进
+        - P3 - 技术债储备
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 背景与证据
+      description: 说明为什么需要做，并附日志、指标或相关 Issue。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围与文件边界
+      description: 列出计划修改的模块，以及明确不修改的内容。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收条件
+      placeholder: |
+        - [ ] 行为或配置……
+        - [ ] 自动化检查……
+        - [ ] 文档……
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依赖、风险与并行关系
+      description: 标记阻塞项、共享文件和可独立执行的子任务。
+    validations:
+      required: true
