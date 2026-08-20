@@ -26,21 +26,6 @@ const INJECT_SCRIPT =
   'elif [ -n "$ZSH_VERSION" ]; then __myssh_cwd(){ printf "\\033]7;file://%s%s\\007" "${HOSTNAME:-}" "$PWD"; }; ' +
   'precmd_functions+=(__myssh_cwd); fi; __myssh_cwd'
 
-/** 从输出流中解析 OSC 7 目录序列(file://host/path) */
-function extractCwd(text: string): string | undefined {
-  let last: string | undefined
-  for (const m of text.matchAll(OSC7_RE)) last = m[0]
-  if (!last) return undefined
-  const payload = last.slice(4, -1)
-  const m = /^file:\/\/[^/]*(.*)$/.exec(payload)
-  if (!m) return undefined
-  try {
-    return decodeURIComponent(m[1])
-  } catch {
-    return m[1]
-  }
-}
-
 /**
  * 隐藏注入脚本在终端里的回显:找到脚本文本后,连同所在整行一起删除。
  * 在脚本出现前,持有未完成的末尾行,避免提示符残留。
@@ -217,6 +202,74 @@ function removeShell(session: Session, shellId: string): void {
   session.cwds.delete(shellId)
 }
 
+/**
+ * 单遍扫描:剔除 OSC 7 序列并解析最新 cwd。
+ * 旧实现 matchAll + replace 对全文扫两遍,大流量下每 chunk 多付一倍正则成本。
+ */
+function stripOsc7(text: string): { out: string; cwd: string | undefined } {
+  let cwd: string | undefined
+  let lastEnd = 0
+  let out = ''
+  let m: RegExpExecArray | null
+  OSC7_RE.lastIndex = 0
+  while ((m = OSC7_RE.exec(text)) !== null) {
+    out += text.slice(lastEnd, m.index)
+    lastEnd = m.index + m[0].length
+    const payload = m[0].slice(4, -1)
+    const pm = /^file:\/\/[^/]*(.*)$/.exec(payload)
+    if (pm) {
+      try {
+        cwd = decodeURIComponent(pm[1])
+      } catch {
+        cwd = pm[1]
+      }
+    }
+  }
+  if (lastEnd === 0) return { out: text, cwd: undefined }
+  out += text.slice(lastEnd)
+  return { out, cwd }
+}
+
+/**
+ * 每 shell 输出聚合器:自适应批量化 IPC。
+ * 首条立即发送(打字回显零新增延迟);紧随其后的 chunk 合并进 8ms 窗口,
+ * 大流量时把每秒数百次 IPC 压到 ~125 次,显著降低结构化克隆与派发开销。
+ */
+class OutputBatcher {
+  private buf: string[] = []
+  private timer: NodeJS.Timeout | null = null
+
+  constructor(
+    private readonly send: (data: string) => void
+  ) {}
+
+  push(text: string): void {
+    this.buf.push(text)
+    if (this.timer) return
+    // 首条:立即发,同时开窗合并后续
+    this.flush()
+    this.timer = setTimeout(() => {
+      this.timer = null
+      this.flush()
+    }, 8)
+  }
+
+  flush(): void {
+    if (this.buf.length === 0) return
+    const data = this.buf.length === 1 ? this.buf[0] : this.buf.join('')
+    this.buf.length = 0
+    this.send(data)
+  }
+
+  dispose(): void {
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+    this.flush()
+  }
+}
+
 /** 为 stream 绑定输出处理、注入脚本、cwd 解析和关闭处理 */
 function setupShell(
   session: Session,
@@ -238,6 +291,11 @@ function setupShell(
 
     webContents.send('ssh:shell-status', { sessionId, shellId, status: 'connected', name: `终端 ${shellSeq}` })
 
+    const batcher = new OutputBatcher((data) => {
+      if (!webContents.isDestroyed()) {
+        webContents.send('ssh:output', { sessionId, shellId, data })
+      }
+    })
     const cleaner = new StreamCleaner(INJECT_SCRIPT)
     let oscPending = ''
     stream.on('data', (data: Buffer) => {
@@ -245,29 +303,26 @@ function setupShell(
       if (text) {
         text = oscPending + text
         oscPending = ''
-        const cwd = extractCwd(text)
+        const { out, cwd } = stripOsc7(text)
         if (cwd) session.cwds.set(shellId, cwd)
-        let forward = text.replace(OSC7_RE, '')
+        let forward = out
         const lastOsc = forward.lastIndexOf('\x1b]')
         if (lastOsc !== -1 && !forward.slice(lastOsc).includes('\x07')) {
           oscPending = forward.slice(lastOsc)
           forward = forward.slice(0, lastOsc)
         }
-        if (forward && !webContents.isDestroyed()) {
-          webContents.send('ssh:output', { sessionId, shellId, data: forward })
-        }
+        if (forward) batcher.push(forward)
       }
     })
     const flushTimer = setTimeout(() => {
       const extra = cleaner.deactivate()
-      if (extra && !webContents.isDestroyed()) {
-        webContents.send('ssh:output', { sessionId, shellId, data: extra })
-      }
+      if (extra) batcher.push(extra)
     }, 2500)
     stream.on('close', () => clearTimeout(flushTimer))
     stream.write(`${INJECT_SCRIPT}\r`)
 
     stream.on('close', () => {
+      batcher.dispose()
       if (!sessions.has(sessionId)) return
       removeShell(session, shellId)
       webContents.send('ssh:shell-status', { sessionId, shellId, status: 'closed' })

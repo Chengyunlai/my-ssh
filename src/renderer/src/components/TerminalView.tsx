@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 
 interface Props {
@@ -30,6 +31,26 @@ export default function TerminalView({ sessionId, shellId }: Props): React.JSX.E
     term.loadAddon(fit)
 
     term.open(containerRef.current!)
+    // 测试钩子:按 会话+shell 注册实例,供自动化测试读取缓冲文本
+    // (WebGL 渲染器文字画在 canvas,DOM innerText 读不到)
+    const termKey = `${sessionId}\u0000${shellId}`
+    const reg = (window as unknown as { __xterms?: Record<string, Terminal> }).__xterms ?? {}
+    reg[termKey] = term
+    ;(window as unknown as { __xterms?: Record<string, Terminal> }).__xterms = reg
+    // WebGL 渲染器:大流量/TUI 全屏重绘性能远优于默认 DOM 渲染器;
+    // 上下文创建失败(无 GPU/驱动黑名单)时静默回退 DOM 渲染
+    let webgl: WebglAddon | undefined
+    try {
+      webgl = new WebglAddon()
+      webgl.onContextLoss(() => {
+        webgl?.dispose()
+        webgl = undefined
+      })
+      term.loadAddon(webgl)
+    } catch {
+      webgl = undefined
+    }
+
     fit.fit()
     window.ssh.resize(sessionId, shellId, term.cols, term.rows)
 
@@ -37,10 +58,13 @@ export default function TerminalView({ sessionId, shellId }: Props): React.JSX.E
       const el = containerRef.current
       if (!el || el.clientWidth === 0 || el.clientHeight === 0) return
       fit.fit()
-      term.refresh(0, term.rows - 1)
       const size = { cols: term.cols, rows: term.rows }
-      if (sizeRef.current && sizeRef.current.cols === size.cols && sizeRef.current.rows === size.rows) return
+      const prev = sizeRef.current
+      // 尺寸未变时直接返回:ResizeObserver 在拖拽窗口时高频触发,
+      // 无条件 refresh(0, rows-1) 会造成全视口重绘风暴
+      if (prev && prev.cols === size.cols && prev.rows === size.rows) return
       sizeRef.current = size
+      term.refresh(0, term.rows - 1)
       window.ssh.resize(sessionId, shellId, size.cols, size.rows)
     }
     const observer = new ResizeObserver(sendResize)
@@ -55,6 +79,9 @@ export default function TerminalView({ sessionId, shellId }: Props): React.JSX.E
       inputSub.dispose()
       outputSub()
       observer.disconnect()
+      webgl?.dispose()
+      const r = (window as unknown as { __xterms?: Record<string, Terminal> }).__xterms
+      if (r) delete r[termKey]
       term.dispose()
     }
   }, [sessionId, shellId])

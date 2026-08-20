@@ -68,7 +68,10 @@ function createWindow(): BrowserWindow {
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // SSH 客户端常在后台盯输出(tail -f / 构建):关闭后台节流,
+      // 避免窗口失焦时 rAF/定时器被限流导致终端渲染饿死、切回时爆发式补绘
+      backgroundThrottling: false
     }
   })
 
