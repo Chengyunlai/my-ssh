@@ -3,6 +3,12 @@
 核心仓库编译产物通过 `electron-builder` + `electron-updater` 分发。发布流程:
 改版本 → 构建 → 上传安装包与元数据 → 用户端「设置 → 关于 → 检查更新」/ 启动时静默检查。
 
+CI 中 macOS、Windows、Linux 只并行构建并上传 Actions artifact；全部完成后由唯一的 publish job
+汇总并校验必需资产，再创建或更新 GitHub Release。发布 job 在 tag 推送与手动触发之间共用发布锁；
+资产校验要求精确的 10 文件集合、常规文件类型、合理大小，并核对 `latest*.yml` 引用资产的
+版本、SHA-512 与大小。禁止矩阵 job 分别执行 `--publish always`，否则可能为同一 tag 创建多个
+Release 并把平台产物拆散。
+
 ## 1. 版本节奏
 
 - 只改 `package.json` 的 `version`,例如 `0.1.0 → 1.0.0 → 1.1.0`(semver)
