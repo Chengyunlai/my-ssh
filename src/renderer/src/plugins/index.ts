@@ -56,7 +56,9 @@ async function loadExternalPlugins(): Promise<MySshPlugin[]> {
               minAppVersion: info.minAppVersion,
               maxAppVersion: info.maxAppVersion,
               platforms: info.platforms,
-              official: info.official === true
+              official: info.official === true,
+              runtime: info.runtime,
+              runtimeCapability: info.runtimeCapability
             })
           }
         } catch (err) {

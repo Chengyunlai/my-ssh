@@ -20,6 +20,11 @@ Main process (SSH / SFTP / storage / updater / market)
         └── GitHub Releases / plugin registry
 ```
 
+官方插件如需本地后台服务，还可使用由 Main process 管理的 Companion Runtime：runtime bundle
+由插件市场携带，核心负责校验、受控子进程生命周期、`127.0.0.1:0` 动态端口和临时 token，
+renderer 只通过 capability 获取最终 endpoint。具体业务代理不进入核心，也不通过插件之间的依赖
+来提供；第一阶段仅允许 registry 盖章的官方纯 JS runtime。
+
 允许的依赖方向是 `renderer → preload API contract → main`。`src/shared/` 保存两侧共享的类型和纯逻辑，
 不得反向依赖任一进程实现。
 

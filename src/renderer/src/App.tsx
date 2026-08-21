@@ -25,6 +25,7 @@ import {
   type PluginStates
 } from './plugins'
 import { buildAppPanelHosts, PluginSurface } from './plugins/panel-host'
+import { createPluginRuntimeContext } from './plugins/runtime'
 import type { AppPanelProps, MySshPlugin, SessionPanelProps } from './plugins/types'
 
 /** 同一 SSH 连接内的一个终端子标签 */
@@ -64,11 +65,14 @@ function renderPanel(
   active: boolean
 ): React.JSX.Element | null {
   if (!p.panel) return null
+  const runtime = p.runtime && p.runtimeCapability
+    ? createPluginRuntimeContext(p.id, p.runtimeCapability)
+    : undefined
   const surface = (content: React.JSX.Element): React.JSX.Element => (
     <PluginSurface plugin={p}>{content}</PluginSurface>
   )
   if (p.panel.scope === 'app') {
-    return surface(createElement(p.panel.Component as ComponentType<AppPanelProps>))
+    return surface(createElement(p.panel.Component as ComponentType<AppPanelProps>, { runtime }))
   }
   if (!session) {
     return surface(
@@ -82,7 +86,8 @@ function renderPanel(
     createElement(p.panel.Component as ComponentType<SessionPanelProps>, {
       sessionId: session.sessionId,
       profile: session.profile,
-      active
+      active,
+      runtime
     })
   )
 }
@@ -425,7 +430,10 @@ export default function App(): React.JSX.Element {
   const togglePlugin = (id: string, enabled: boolean): void => {
     savePluginState(id, enabled)
     setPluginStates(loadPluginStates())
+    if (enabled) void reloadPlugins()
     if (!enabled) {
+      const plugin = allPlugins.find((item) => item.id === id)
+      if (plugin?.runtimeCapability) void window.ssh.pluginRuntime.stop(plugin.runtimeCapability).catch(() => {})
       // 被禁用的插件不再有面板:相关页签全部回落到终端
       setSessions((list) => list.map((t) => (t.panelTab === id ? { ...t, panelTab: 'terminal' } : t)))
       setAppPanelActive((cur) => (cur === id ? null : cur))

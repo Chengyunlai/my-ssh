@@ -31,6 +31,13 @@ definePlugin({
   widget: {
     placement: 'terminal-bottom',   // 终端底部的小型挂件条
     Component: WidgetComponent
+  },
+  runtime: {
+    kind: 'node-companion-v1',
+    entry: 'runtime/mysql-manager-proxy.cjs',
+    sha256: '<runtime bundle sha256>',
+    transport: 'websocket',
+    lifecycle: 'on-demand'
   }
 })
 ```
@@ -41,7 +48,34 @@ definePlugin({
 - `widget`(当前仅 `terminal-bottom`):渲染在终端区域底部的一条轻量组件,接收
   `{ sessionId, profile }`,适合命令搜索条、状态提示等小功能
 
-### 1.1 内容区、位置与布局约束
+### 1.1 Companion Runtime（官方插件）
+
+需要本地后台服务的官方插件可以声明 `runtime`，但不得在 renderer 中自行启动 Node、shell 或
+固定端口。MySSH 核心会在插件首次调用 `runtime.getEndpoint()` 时：校验 runtime bundle 的
+SHA-256、固定绑定 `127.0.0.1`、以 `port=0` 启动、生成临时 token，并把实际 WebSocket 地址
+注入当前插件面板。插件只实现自己的业务协议和 UI。
+
+当前契约只支持：
+
+- `kind: node-companion-v1`：纯 JavaScript Node bundle，暂不允许原生 `.node` 依赖；
+- `transport: websocket`；
+- `lifecycle: on-demand`（首次使用启动，禁用/卸载/退出应用时停止）。
+
+插件组件通过 props 使用宿主 capability：
+
+```ts
+function Panel({ runtime }: { runtime?: PluginRuntimeContext }) {
+  const endpoint = await runtime?.getEndpoint()
+  // endpoint.url 由宿主生成，不要自行拼接 host / port / token
+}
+```
+
+第一阶段只允许 MySSH 官方固定 registry（`https://chengyunlai.github.io/my-ssh-plug/registry.json`）
+盖章的官方插件启动 companion runtime。runtime bundle 与 renderer 入口分开下载、分别校验 hash；
+插件不能自定义启动命令、环境变量、监听地址或端口。需要后台
+服务的新插件必须先在核心仓库完成宿主契约 Issue/PR，再在插件仓库接入。
+
+### 1.2 内容区、位置与布局约束
 
 插件**不能自行决定 MySSH 外壳中的位置**。位置由清单能力和宿主插槽决定:
 
@@ -67,7 +101,7 @@ definePlugin({
 内部的连接/对象树是插件自己的**内部侧栏**，不能把 MySSH 左侧服务器栏当成可重排区域，
 也不能通过 CSS 把 MySQL 工作台提升到顶栏或状态栏。
 
-### 1.2 样式自由度与宿主 Token
+### 1.3 样式自由度与宿主 Token
 
 样式采用“固定语义 token + 插件局部实现”的模式:插件可以设计内部信息架构和组件细节，
 但颜色、间距、圆角、字体必须优先使用宿主注入的以下变量，不得复制一套全局主题:
@@ -92,7 +126,7 @@ definePlugin({
 交互样式遵循 [`docs/UI.md`](./UI.md):可点击元素有 `:hover`、`:active`、`:focus-visible`，
 hover 受媒体查询保护，禁止 `transition: all`，并尊重 `prefers-reduced-motion`。
 
-### 1.3 跨仓库变更流程
+### 1.4 跨仓库变更流程
 
 插件仓库不能直接修改 `my-ssh`。需要新增插槽、Token、面板布局或宿主行为时，按以下顺序:
 
@@ -303,3 +337,4 @@ definePlugin({
 | --- | --- | --- | --- | --- |
 | 文件传输(SFTP) | `sftp` | 内置(官方) | 启用 | 高性能上传/下载,会话内使用 |
 | 命令手册 | `command-book` | 外部(market,官方) | 不安装 | 终端底部搜索条:100 条常用命令,关键字匹配,点击复制 |
+| MySQL 管理器 | `mysql-manager` | 外部(market,官方) | 不安装 | workspace 工作台；使用官方 Companion Runtime 按需启动 MySQL WebSocket 代理 |

@@ -14,7 +14,9 @@ import type {
   SftpReadProgress,
   SftpReadResult,
   IpcResult,
-  SshApi
+  SshApi,
+  PluginRuntimeEndpoint,
+  PluginRuntimeStateInfo
 } from '@shared/types'
 
 /** 解包主进程的结构化结果;失败时抛出,供渲染端 try/catch 使用 */
@@ -115,7 +117,21 @@ const api: SshApi = {
   marketFetchRegistry: (url) => invokeSafe<MarketRegistry>('market:fetch-registry', url),
   marketListInstalled: () => invokeSafe<InstalledPlugin[]>('market:list-installed'),
   marketInstall: (url, pluginId) =>
-    invokeSafe<InstalledPlugin>('market:install', url, pluginId)
+    invokeSafe<InstalledPlugin>('market:install', url, pluginId),
+  pluginRuntime: {
+    getEndpoint: (capability) =>
+      invokeSafe<PluginRuntimeEndpoint>('plugin-runtime:get-endpoint', capability),
+    getState: (capability) =>
+      invokeSafe<PluginRuntimeStateInfo>('plugin-runtime:get-state', capability),
+    onState: (capability, cb) => {
+      const listener = (_e: Electron.IpcRendererEvent, state: PluginRuntimeStateInfo): void => {
+        cb(state)
+      }
+      ipcRenderer.on('plugin-runtime:state', listener)
+      return () => ipcRenderer.removeListener('plugin-runtime:state', listener)
+    },
+    stop: (capability) => invokeSafe<void>('plugin-runtime:stop', capability)
+  }
 }
 
 contextBridge.exposeInMainWorld('ssh', api)

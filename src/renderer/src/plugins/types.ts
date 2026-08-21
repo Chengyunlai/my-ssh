@@ -1,14 +1,29 @@
 import type { ComponentType } from 'react'
-import type { PluginPlatform, Profile } from '@shared/types'
+import type {
+  PluginPlatform,
+  PluginRuntimeEndpoint,
+  PluginRuntimeStateInfo,
+  Profile
+} from '@shared/types'
 
 export interface SessionPanelProps {
   sessionId: string
   profile: Profile
   /** 面板是否为当前可见标签;可见瞬间可用于主动刷新,避免数据过期 */
   active?: boolean
+  runtime?: PluginRuntimeContext
 }
 
-export type AppPanelProps = Record<string, never>
+export interface PluginRuntimeContext {
+  getEndpoint(): Promise<PluginRuntimeEndpoint>
+  getState(): Promise<PluginRuntimeStateInfo>
+  onState(callback: (state: PluginRuntimeStateInfo) => void): () => void
+}
+
+export interface AppPanelProps {
+  /** 仅当插件清单声明 runtime 时由宿主注入；插件不能自行启动进程。 */
+  runtime?: PluginRuntimeContext
+}
 
 export type WidgetPlacement = 'terminal-bottom'
 
@@ -37,6 +52,13 @@ export interface MySshPlugin {
   builtin?: boolean
   /** 首次启动默认状态,缺省为启用 */
   defaultEnabled?: boolean
+  /** 由官方 registry 声明的 companion runtime；外部插件由宿主清单覆盖。 */
+  runtime?: {
+    kind: 'node-companion-v1'
+    transport: 'websocket'
+    lifecycle?: 'on-demand' | 'always'
+  }
+  runtimeCapability?: string
   /** 面板标签页 */
   panel?: {
     title: string
