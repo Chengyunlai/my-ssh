@@ -12,6 +12,12 @@ export type AppPanelProps = Record<string, never>
 
 export type WidgetPlacement = 'terminal-bottom'
 
+/**
+ * 面板在宿主内容区中的布局级别。
+ * standard 适合普通表单/列表；workspace 适合带内部导航和工作区的重型插件。
+ */
+export type PanelLayout = 'standard' | 'workspace'
+
 export interface MySshPlugin {
   id: string
   name: string
@@ -36,6 +42,8 @@ export interface MySshPlugin {
     title: string
     /** app:无需会话即可使用;session(默认):会话激活时显示 */
     scope?: 'app' | 'session'
+    /** 宿主布局约束；缺省为 standard 以兼容既有插件 */
+    layout?: PanelLayout
     Component: ComponentType<SessionPanelProps> | ComponentType<AppPanelProps>
   }
   /** 终端挂件:嵌入终端区域的轻量组件 */

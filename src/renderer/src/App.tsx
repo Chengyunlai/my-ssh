@@ -24,6 +24,7 @@ import {
   savePluginState,
   type PluginStates
 } from './plugins'
+import { buildAppPanelHosts, PluginSurface } from './plugins/panel-host'
 import type { AppPanelProps, MySshPlugin, SessionPanelProps } from './plugins/types'
 
 /** 同一 SSH 连接内的一个终端子标签 */
@@ -63,22 +64,27 @@ function renderPanel(
   active: boolean
 ): React.JSX.Element | null {
   if (!p.panel) return null
+  const surface = (content: React.JSX.Element): React.JSX.Element => (
+    <PluginSurface plugin={p}>{content}</PluginSurface>
+  )
   if (p.panel.scope === 'app') {
-    return createElement(p.panel.Component as ComponentType<AppPanelProps>)
+    return surface(createElement(p.panel.Component as ComponentType<AppPanelProps>))
   }
   if (!session) {
-    return (
+    return surface(
       <div className="empty-state">
         <h2>请先连接服务器</h2>
         <p>「{p.name}」需要已建立的 SSH 会话</p>
       </div>
     )
   }
-  return createElement(p.panel.Component as ComponentType<SessionPanelProps>, {
-    sessionId: session.sessionId,
-    profile: session.profile,
-    active
-  })
+  return surface(
+    createElement(p.panel.Component as ComponentType<SessionPanelProps>, {
+      sessionId: session.sessionId,
+      profile: session.profile,
+      active
+    })
+  )
 }
 
 export default function App(): React.JSX.Element {
@@ -95,6 +101,7 @@ export default function App(): React.JSX.Element {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   /** app 级插件面板:独立于会话,挂在会话标签栏右侧 */
   const [appPanelActive, setAppPanelActive] = useState<string | null>(null)
+  const [mountedAppPanelIds, setMountedAppPanelIds] = useState<Set<string>>(() => new Set())
   const [pluginStates, setPluginStates] = useState<PluginStates>(() => loadPluginStates())
   const [allPlugins, setAllPlugins] = useState<MySshPlugin[]>(builtinPlugins)
   // 连接覆盖层:connecting(logo 装配循环) -> settling(连接完成,收尾定格) -> leaving(淡出) -> null
@@ -272,6 +279,16 @@ export default function App(): React.JSX.Element {
     setAppPanelActive(null)
   }, [])
 
+  const toggleAppPanel = useCallback((pluginId: string): void => {
+    setMountedAppPanelIds((mounted) => {
+      if (mounted.has(pluginId)) return mounted
+      const next = new Set(mounted)
+      next.add(pluginId)
+      return next
+    })
+    setAppPanelActive((activeId) => (activeId === pluginId ? null : pluginId))
+  }, [])
+
   const connect = useCallback(
     async (profile: Profile) => {
       lastProfileRef.current = profile
@@ -412,6 +429,12 @@ export default function App(): React.JSX.Element {
       // 被禁用的插件不再有面板:相关页签全部回落到终端
       setSessions((list) => list.map((t) => (t.panelTab === id ? { ...t, panelTab: 'terminal' } : t)))
       setAppPanelActive((cur) => (cur === id ? null : cur))
+      setMountedAppPanelIds((mounted) => {
+        if (!mounted.has(id)) return mounted
+        const next = new Set(mounted)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -583,7 +606,7 @@ export default function App(): React.JSX.Element {
                       <button
                         key={p.id}
                         className={`session-tab app-panel${appPanelActive === p.id ? ' active' : ''}`}
-                        onClick={() => setAppPanelActive(appPanelActive === p.id ? null : p.id)}
+                        onClick={() => toggleAppPanel(p.id)}
                       >
                         {p.panel!.title}
                       </button>
@@ -738,11 +761,9 @@ export default function App(): React.JSX.Element {
                   )
                 })}
 
-                {enabledPlugins
-                  .filter((p) => p.panel && p.panel.scope === 'app' && appPanelActive === p.id)
-                  .map((p) => (
-                    <div className="tab-pane" key={p.id}>
-                      {renderPanel(p, activeSession, true)}
+                {buildAppPanelHosts(enabledPlugins, appPanelActive, mountedAppPanelIds).map(({ plugin, active }) => (
+                    <div className={`tab-pane${active ? '' : ' hidden'}`} key={plugin.id}>
+                      {renderPanel(plugin, activeSession, active)}
                     </div>
                   ))}
 
