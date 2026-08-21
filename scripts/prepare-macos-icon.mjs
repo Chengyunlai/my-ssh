@@ -19,9 +19,12 @@ import zlib from 'node:zlib';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = join(root, 'docs/logo/final/myssh-icon-white-1024.png');
+const DMG_SOURCE = join(root, 'docs/logo/final/myssh-icon-white-tile-1024.png');
 const ICON_PNG = join(root, 'build/icon.png');
 const ICONSET_DIR = join(root, 'build/icon.iconset');
 const ICNS = join(root, 'build/icon.icns');
+const DMG_ICONSET_DIR = join(root, 'build/dmg-volume.iconset');
+const DMG_ICNS = join(root, 'build/dmg-volume.icns');
 
 const ICONSET_SIZES = [
   ['icon_16x16.png', 16],
@@ -179,7 +182,7 @@ function checkFile(file, label) {
 }
 
 /* ---------- icns 解析校验(iconutil 产出的 icns 内嵌 PNG) ---------- */
-function checkIcns(file) {
+function checkIcns(file, requireOpaque = true) {
   if (!existsSync(file)) {
     console.error(`✗ icns:文件不存在 ${file}`);
     return false;
@@ -201,11 +204,13 @@ function checkIcns(file) {
       const { width, height, pixels } = decodePNG(data);
       const s = alphaStats(width, height, pixels);
       count++;
-      if (s.notOpaque > 0) {
+      if (requireOpaque && s.notOpaque > 0) {
         console.error(`✗ icns[${type} ${width}x${height}]:存在 ${s.notOpaque} 个非不透明像素`);
         ok = false;
-      } else {
+      } else if (requireOpaque) {
         console.log(`✓ icns[${type} ${width}x${height}]:100.000% 不透明`);
+      } else {
+        console.log(`✓ icns[${type} ${width}x${height}]:圆角卷图标资源已校验`);
       }
     }
     pos += len;
@@ -237,9 +242,9 @@ function rebuild() {
   console.log(`    build/icon.png 已同步`);
 
   if (!hasBin('sips') || !hasBin('iconutil')) {
-    console.log('2/4 跳过 iconset/icns(当前环境无 sips/iconutil,仅适用于 macOS 构建机)');
+    console.log('2/5 跳过 iconset/icns(当前环境无 sips/iconutil,仅适用于 macOS 构建机)');
   } else {
-    console.log('2/4 生成 icon.iconset(10 个尺寸)');
+    console.log('2/5 生成 icon.iconset(10 个尺寸)');
     rmSync(ICONSET_DIR, { recursive: true, force: true });
     mkdirSync(ICONSET_DIR, { recursive: true });
     for (const [name, size] of ICONSET_SIZES) {
@@ -247,15 +252,28 @@ function rebuild() {
       execFileSync('sips', ['-z', String(size), String(size), ICON_PNG, '--out', outFile], { stdio: 'ignore' });
     }
 
-    console.log('3/4 生成 icon.icns');
+    console.log('3/5 生成 icon.icns');
     if (!existsSync(join(ICONSET_DIR, 'icon_512x512@2x.png'))) {
       console.error('✗ iconset 缺少 icon_512x512@2x.png,无法生成 icns');
       process.exit(1);
     }
     execFileSync('iconutil', ['-c', 'icns', ICONSET_DIR, '-o', ICNS], { stdio: 'ignore' });
+
+    console.log('4/5 生成 DMG 专用圆角卷图标');
+    if (!existsSync(DMG_SOURCE)) {
+      console.error(`✗ DMG 圆角源图不存在:${DMG_SOURCE}`);
+      process.exit(1);
+    }
+    rmSync(DMG_ICONSET_DIR, { recursive: true, force: true });
+    mkdirSync(DMG_ICONSET_DIR, { recursive: true });
+    for (const [name, size] of ICONSET_SIZES) {
+      const outFile = join(DMG_ICONSET_DIR, name);
+      execFileSync('sips', ['-z', String(size), String(size), DMG_SOURCE, '--out', outFile], { stdio: 'ignore' });
+    }
+    execFileSync('iconutil', ['-c', 'icns', DMG_ICONSET_DIR, '-o', DMG_ICNS], { stdio: 'ignore' });
   }
 
-  console.log('4/4 校验打包资产 100% 不透明');
+  console.log('5/5 校验打包资产');
   let ok = true;
   ok = checkFile(ICON_PNG, 'build/icon.png') && ok;
   for (const [name] of ICONSET_SIZES) {
@@ -263,11 +281,12 @@ function rebuild() {
     if (existsSync(f)) ok = checkFile(f, `iconset/${name}`) && ok;
   }
   if (existsSync(ICNS)) ok = checkIcns(ICNS) && ok;
+  if (existsSync(DMG_ICNS)) ok = checkIcns(DMG_ICNS, false) && ok;
   if (!ok) {
     console.error('✗ 校验失败:仍有非不透明像素,请检查源图');
     process.exit(1);
   }
-  console.log('✓ 完成:macOS 图标已重建为 100% 不透明全出血版,系统将自动套用圆角遮罩');
+  console.log('✓ 完成:应用图标使用全出血资源,DMG 磁盘卷使用专用圆角资源');
 }
 
 function check() {
@@ -278,6 +297,7 @@ function check() {
     if (existsSync(f)) ok = checkFile(f, `iconset/${name}`) && ok;
   }
   if (existsSync(ICNS)) ok = checkIcns(ICNS) && ok;
+  if (existsSync(DMG_ICNS)) ok = checkIcns(DMG_ICNS, false) && ok;
   if (!ok) {
     console.error('✗ 图标资产存在非不透明像素,请运行 node scripts/prepare-macos-icon.mjs 重建');
     process.exit(1);

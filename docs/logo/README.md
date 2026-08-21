@@ -68,6 +68,8 @@ python scripts/generate_showcase.py --all-styles --logo png/<final-variant>.png
 - `final/myssh-icon-white-1024.png` — 全出血不透明白底主图(macOS 图标,系统自动套圆角遮罩),即 `build/icon.png`
 - `final/myssh-icon-white-tile-1024.png` — 白圆角磁贴版(Windows / Linux 图标、界面 logo 共用)
 - `build/icon.icns` / `build/icon.ico` / `build/icons/` 均由上述两版生成
+- `build/dmg-volume.icns` 使用专用白圆角磁贴版,仅用于 macOS DMG 挂载到桌面后的磁盘卷图标;
+  磁盘卷不会自动套用应用图标的系统圆角遮罩
 - 界面 logo 使用 `src/renderer/src/assets/myssh-icon-tile.png`(顶栏 / 空状态 / 关于页),不再做 CSS 反白
 - 应用构建图标(项目根 `build/`):`icon.png`(1024)、`icon.icns`(macOS)、`icon.ico`(Windows)、`icons/`(Linux 多尺寸)
 - 换色:SVG 为 `currentColor`,改外层 `color` 即可;绿色版为品牌 `--ok: #30d158`

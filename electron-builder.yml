@@ -13,6 +13,9 @@ mac:
   target:
     - dmg
     - zip # electron-updater 在 macOS 只认 zip 产物(dmg 仅供手动安装)
+dmg:
+  # 磁盘卷不会像 .app 那样自动套 macOS 圆角,使用专用圆角卷图标。
+  icon: build/dmg-volume.icns
 win:
   icon: build/icon.ico
   target:
