@@ -8,6 +8,7 @@ import * as sftp from './sftp'
 import * as ssh from './ssh'
 import * as storage from './storage'
 import * as updater from './updater'
+import { PluginRuntimeManager } from './plugin-runtime'
 import type { Profile, UpdateState } from '@shared/types'
 import type { IpcResult } from '@shared/types'
 
@@ -24,6 +25,7 @@ const appIconPath = path.join(__dirname, '../../build/icon-tile.png')
 const dockIconPath = path.join(__dirname, '../../build/icon-tile-dock.png')
 const hasAppIcon = existsSync(appIconPath)
 const hasDockIcon = existsSync(dockIconPath)
+let pluginRuntimeManager: PluginRuntimeManager | null = null
 
 // 默认 Electron 菜单(File / Edit / View / Window / Help)是典型的"Electron 味"。
 // 只保留系统级角色菜单:应用菜单(macOS)、编辑(复制/粘贴/全选)、窗口。
@@ -204,10 +206,42 @@ function registerIpc(): void {
     safeHandle('market:fetch-registry', () => market.fetchRegistry(url))
   )
   ipcMain.handle('market:list-installed', () =>
-    safeHandle('market:list-installed', () => market.listInstalled())
+    safeHandle('market:list-installed', async () => {
+      const installed = await market.listInstalled()
+      if (!pluginRuntimeManager) return installed
+      return Promise.all(
+        installed.map(async (plugin) => {
+          if (!plugin.runtime || !plugin.official) return plugin
+          try {
+            return { ...plugin, runtimeCapability: await pluginRuntimeManager!.issueCapability(plugin.id) }
+          } catch {
+            return plugin
+          }
+        })
+      )
+    })
   )
   ipcMain.handle('market:install', (_e, url: string, pluginId: string) =>
     safeHandle('market:install', () => market.install(url, pluginId))
+  )
+
+  ipcMain.handle('plugin-runtime:get-endpoint', (_e, capability: string) =>
+    safeHandle('plugin-runtime:get-endpoint', async () => {
+      if (!pluginRuntimeManager) throw new Error('companion runtime 尚未初始化')
+      return pluginRuntimeManager.getEndpoint(capability)
+    })
+  )
+  ipcMain.handle('plugin-runtime:get-state', (_e, capability: string) =>
+    safeHandle('plugin-runtime:get-state', () => {
+      if (!pluginRuntimeManager) throw new Error('companion runtime 尚未初始化')
+      return pluginRuntimeManager.getState(capability)
+    })
+  )
+  ipcMain.handle('plugin-runtime:stop', (_e, capability: string) =>
+    safeHandle('plugin-runtime:stop', async () => {
+      if (!pluginRuntimeManager) return
+      await pluginRuntimeManager.stop(capability)
+    })
   )
 
   ipcMain.handle('sftp:home', (_e, sessionId: string) =>
@@ -241,6 +275,24 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   logger.initLogger(app.getPath('userData'))
+  pluginRuntimeManager = new PluginRuntimeManager({
+    executablePath: process.execPath,
+    resolveRuntime: async (pluginId) => {
+      const descriptor = await market.getInstalledRuntime(pluginId)
+      return {
+        pluginId: descriptor.pluginId,
+        official: descriptor.official,
+        runtimePath: descriptor.runtimePath,
+        kind: descriptor.runtime.kind,
+        transport: descriptor.runtime.transport
+      }
+    }
+  })
+  pluginRuntimeManager.onState((state) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('plugin-runtime:state', state)
+    }
+  })
   if (isMac && hasDockIcon) app.dock?.setIcon(dockIconPath)
   protocol.handle('myssh-plugin', (req) => {
     const url = new URL(req.url)
@@ -279,7 +331,11 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   ssh.disconnectAll()
+  void pluginRuntimeManager?.dispose()
   app.quit()
 })
 
-app.on('before-quit', () => ssh.disconnectAll())
+app.on('before-quit', () => {
+  ssh.disconnectAll()
+  void pluginRuntimeManager?.dispose()
+})

@@ -29,6 +29,10 @@
 
 <!-- 新版本的变更在这里积累,发版时把内容挪到下方新版本条目里。 -->
 
+- **新增**:官方插件受控 Companion Runtime 宿主能力(`node-companion-v1`)，支持按需启动本地纯 JS runtime、动态 loopback 端口、临时 token 和生命周期清理
+- **改进**:MySQL Manager 1.1.0 改用宿主注入的 runtime endpoint，保留显式 `proxyUrl` 作为兼容回退
+- **安全**:runtime bundle 与插件入口分别校验 SHA-256，第一阶段仅允许官方插件启动 companion 进程
+
 - **工程化**:修复三平台并行发布产生同 tag 重复 Release、资产被拆散的问题;改为矩阵构建后由单一 job 校验并发布完整资产
 
 ## [1.1.3] - 2026-08-20

@@ -178,6 +178,8 @@ export default definePlugin({
 
 - **命令手册**(`command-book`,默认不安装)— 终端底部的一小条命令搜索框:输入关键字
   (如 `grep`、`压缩`)实时匹配 100 条常用命令,回车或点击复制
+- **MySQL 管理器**(`mysql-manager`,默认不安装)— 独立工作区中的 MySQL 连接、对象浏览和 SQL 查询；
+  MySSH `1.3.0+` 会按需管理其官方 Companion Runtime，无需手动启动本地代理
 
 发布市场 = 构建 `my-ssh-plug` 后把 `dist/` 部署到任意静态地址,把 `registry.json` 的
 URL 填入设置页即可;核心与市场可独立升级。

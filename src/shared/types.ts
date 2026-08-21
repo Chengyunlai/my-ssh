@@ -152,6 +152,42 @@ export interface StorageInfo {
 /** 插件支持的运行平台(Node process.platform 值);缺省表示全平台 */
 export type PluginPlatform = 'win32' | 'darwin' | 'linux'
 
+/** Companion runtime 的宿主协议版本；第一版只允许运行纯 Node JS bundle。 */
+export type PluginRuntimeKind = 'node-companion-v1'
+export type PluginRuntimeLifecycle = 'on-demand' | 'always'
+export type PluginRuntimeTransport = 'websocket'
+
+export interface PluginRuntimeManifest {
+  kind: PluginRuntimeKind
+  /** 相对于插件版本目录的 bundle 路径。 */
+  entry: string
+  /** runtime bundle 的 SHA-256，和 renderer entry 分开校验。 */
+  sha256: string
+  size?: number
+  lifecycle?: PluginRuntimeLifecycle
+  transport: PluginRuntimeTransport
+}
+
+/** registry 解析后带有可下载地址的 runtime 描述。 */
+export interface MarketPluginRuntime extends PluginRuntimeManifest {
+  entryUrl: string
+}
+
+export type PluginRuntimeState = 'stopped' | 'starting' | 'ready' | 'error'
+
+export interface PluginRuntimeStateInfo {
+  pluginId: string
+  state: PluginRuntimeState
+  generation?: string
+  error?: string
+}
+
+export interface PluginRuntimeEndpoint {
+  transport: PluginRuntimeTransport
+  url: string
+  generation: string
+}
+
 export interface MarketPluginInfo {
   id: string
   name: string
@@ -173,6 +209,8 @@ export interface MarketPluginInfo {
   entry: string
   /** entry 文件的 sha256 */
   sha256: string
+  /** 可选的受控 companion runtime；由宿主安装和启动。 */
+  runtime?: MarketPluginRuntime
   /** 主进程解析后的绝对下载地址 */
   entryUrl: string
 }
@@ -198,6 +236,10 @@ export interface InstalledPlugin {
   platforms?: PluginPlatform[]
   /** 官方标记:安装时从 registry 盖章写入 manifest,可信来源 */
   official?: boolean
+  /** 安装时从 registry 固化的 companion runtime 声明。 */
+  runtime?: PluginRuntimeManifest
+  /** 仅本次 renderer 会话的宿主 capability，不写入插件 manifest。 */
+  runtimeCapability?: string
   defaultEnabled?: boolean
   /** 运行时入口:myssh-plugin://<id>/<version>/entry.js */
   entryUrl: string
@@ -267,4 +309,10 @@ export interface SshApi {
   marketFetchRegistry(url: string): Promise<MarketRegistry>
   marketListInstalled(): Promise<InstalledPlugin[]>
   marketInstall(url: string, pluginId: string): Promise<InstalledPlugin>
+  pluginRuntime: {
+    getEndpoint(capability: string): Promise<PluginRuntimeEndpoint>
+    getState(capability: string): Promise<PluginRuntimeStateInfo>
+    onState(capability: string, cb: (state: PluginRuntimeStateInfo) => void): () => void
+    stop(capability: string): Promise<void>
+  }
 }
