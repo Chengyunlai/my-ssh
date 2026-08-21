@@ -28,7 +28,8 @@
    - `src/renderer/src/assets/myssh-icon-tile.png`(256,界面)
    - `build/icons/{16,32,48,64,128,256,512}x{n}.png`(Linux)
    - `build/icon.ico`(16/24/32/48/64/128/256,Windows;手动组装,避免 PIL 自缩放重新引入毛边)
-   - macOS `icon.icns`/iconset 保持全出血方版,圆角由系统遮罩负责,无需处理
+   - macOS 应用 `icon.icns`/iconset 保持全出血方版,圆角由系统遮罩负责,无需处理
+   - macOS DMG 磁盘卷不经过应用遮罩,单独使用 `build/dmg-volume.icns` 圆角资源
 
 6. **macOS dev 显示名与 Dock 图标**:
    - dev 直接跑 `node_modules` 的 Electron.app 时,Dock/菜单栏显示名是 bundle 的 `CFBundleDisplayName`(即 "Electron")。`npm run dev` 现在走 `scripts/dev.mjs`:macOS 下复制一份 Electron.app 到 `.dev/dist/` 并把显示名改为 `my-ssh`,通过 `ELECTRON_EXEC_PATH` 让 electron-vite 用它启动(`app.setName('my-ssh')` 兜底)。首次运行会复制约 300MB,之后缓存复用;`rm -rf .dev` 可强制重建。
@@ -39,4 +40,4 @@
    - 根因:macOS Big Sur+ 会对含透明/半透明像素的图标跳过系统 squircle 遮罩;macOS 26(Tahoe) 判定更严格,边缘存在半透明(alpha≠255)像素时图标会按原图渲染甚至被强制缩小内嵌 + 灰框。
    - 修复:`scripts/prepare-macos-icon.mjs` 将黑 logo 合成到纯白底、所有像素 alpha 强制 =255(同时去掉白色发光渐层的半透明像素),再经 `sips` 生成 10 尺寸 `icon.iconset`、`iconutil` 生成 `icon.icns`,并程序化校验 100% 不透明。
    - 接入:`make icon` 重建;`make dist` 打包前自动重建;CI(macos-latest)打包前自动执行;`node scripts/prepare-macos-icon.mjs --check` 可随时校验防回归。
-   - 注意:开发态圆角磁贴(`build/icon-tile.png`、`build/icon-tile-dock.png`)保持不动;只有打包用全出血白底版与 `icon.icns` 需要重建。
+   - 注意:开发态圆角磁贴(`build/icon-tile.png`、`build/icon-tile-dock.png`)保持不动;打包脚本会同时重建全出血应用图标与 DMG 圆角卷图标。
