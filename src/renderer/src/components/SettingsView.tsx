@@ -645,7 +645,7 @@ export default function SettingsView({
             )}
             {update?.status === 'disabled' && (
               <div className="about-update-status">
-                <span>开发模式不检查更新(打包版本自动启用)</span>
+                <span>{update.error ?? '当前环境不支持应用内更新'}</span>
               </div>
             )}
           </div>

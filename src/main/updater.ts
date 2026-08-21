@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import type { UpdateState } from '@shared/types'
 import { logError } from './logger'
+import { getUpdateSupportReason } from './update-support'
 
 let state: UpdateState = { status: 'disabled', currentVersion: app.getVersion() }
 const listeners = new Set<(s: UpdateState) => void>()
@@ -66,12 +67,13 @@ function wireEvents(): void {
 }
 
 export function isUpdateSupported(): boolean {
-  return app.isPackaged
+  return getUpdateSupportReason({ isPackaged: app.isPackaged, platform: process.platform }) === undefined
 }
 
 export async function checkForUpdate(): Promise<UpdateState> {
-  if (!isUpdateSupported()) {
-    setState({ status: 'disabled', error: '开发模式不检查更新,请使用打包版本' })
+  const unsupportedReason = getUpdateSupportReason({ isPackaged: app.isPackaged, platform: process.platform })
+  if (unsupportedReason) {
+    setState({ status: 'disabled', error: unsupportedReason })
     return state
   }
   configure()
