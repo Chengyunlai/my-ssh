@@ -880,6 +880,62 @@ html[data-platform='darwin'] .topbar {
   display: none;
 }
 
+/* ---------- 插件内容区宿主契约 ---------- */
+/*
+ * 插件只能填充这个 surface；宿主负责尺寸、溢出和主题 token。
+ * isolation + contain 防止复杂插件的内部层叠和布局影响 MySSH 外壳。
+ */
+.plugin-surface {
+  --myssh-plugin-bg: var(--bg);
+  --myssh-plugin-surface: var(--bg-panel);
+  --myssh-plugin-surface-raised: var(--bg-raised);
+  --myssh-plugin-surface-hover: var(--bg-hover);
+  --myssh-plugin-border: var(--border);
+  --myssh-plugin-border-strong: var(--border-strong);
+  --myssh-plugin-text: var(--text);
+  --myssh-plugin-text-strong: var(--text-bright);
+  --myssh-plugin-text-muted: var(--text-dim);
+  --myssh-plugin-accent: var(--accent);
+  --myssh-plugin-danger: var(--danger);
+  --myssh-plugin-warning: var(--warn);
+  --myssh-plugin-success: var(--success);
+  --myssh-plugin-space-1: var(--sp-1);
+  --myssh-plugin-space-2: var(--sp-2);
+  --myssh-plugin-space-3: var(--sp-3);
+  --myssh-plugin-space-4: var(--sp-4);
+  --myssh-plugin-radius-sm: var(--radius-sm);
+  --myssh-plugin-radius-md: var(--radius-md);
+  --myssh-plugin-radius-lg: var(--radius-lg);
+  --myssh-plugin-font-ui: var(--font-ui);
+  --myssh-plugin-font-mono: var(--font-mono);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  isolation: isolate;
+  contain: layout paint;
+  background: var(--myssh-plugin-bg);
+  color: var(--myssh-plugin-text);
+  font-family: var(--myssh-plugin-font-ui);
+}
+
+.plugin-surface > * {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.plugin-surface[data-plugin-layout='workspace'] {
+  /* 工作台由插件实现内部栏位；宿主只给出全出血内容区。 */
+  padding: 0;
+}
+
 .sftp-panel {
   flex: 1;
   display: flex;

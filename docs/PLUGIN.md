@@ -25,6 +25,7 @@ definePlugin({
   panel: {
     title: '标签标题',
     scope: 'session' | 'app',       // app:无需会话;session(默认):需已连接
+    layout: 'standard' | 'workspace', // 内容区布局级别,缺省 standard
     Component: PanelComponent
   },
   widget: {
@@ -39,6 +40,68 @@ definePlugin({
 - `panel`:主区域标签页(如文件传输),`scope: 'app'` 无需会话
 - `widget`(当前仅 `terminal-bottom`):渲染在终端区域底部的一条轻量组件,接收
   `{ sessionId, profile }`,适合命令搜索条、状态提示等小功能
+
+### 1.1 内容区、位置与布局约束
+
+插件**不能自行决定 MySSH 外壳中的位置**。位置由清单能力和宿主插槽决定:
+
+| 类型 | 宿主位置 | 面积上限 | 适用场景 |
+| --- | --- | --- | --- |
+| `panel.scope: 'session'` | 会话标签栏 → 内容区 | 占满宿主内容区,不覆盖顶栏/侧栏/状态栏 | 依赖 SSH 会话的文件、监控、运维工具 |
+| `panel.scope: 'app'` | 应用标签栏 → 内容区 | 占满宿主内容区,不覆盖顶栏/侧栏/状态栏 | 独立于 SSH 会话的工作台,如 MySQL 管理器 |
+| `widget.placement: 'terminal-bottom'` | 当前终端画布底部 | 只允许一条轻量横栏,高度建议不超过 40px | 命令搜索、状态提示、快捷操作 |
+
+`panel` 由宿主包在 `.plugin-surface[data-plugin-id][data-plugin-layout]` 中。插件根节点必须
+填满该 surface,但不得使用 `position: fixed`、修改 `body/#root`、创建跨越宿主的全屏 Portal,
+或依赖宿主外部的 DOM 选择器。宿主会强制 `min-width: 0; min-height: 0; overflow: hidden`，
+插件内部需要滚动时必须在自己的列表/编辑器区域设置 `overflow: auto`。
+
+`layout` 只有两个级别，不允许插件自定义第三种布局:
+
+- `standard`(默认):普通工具栏 + 内容列表/表单,适合轻量面板。外层留白由插件使用
+  `--myssh-plugin-space-*` token 控制。
+- `workspace`:重型工作台,允许在内容区内部组织侧栏、工具栏、标签页和结果区。插件仍不能
+  伸出 surface；内部侧栏建议宽度 240–320px，最小窗口下应收缩到 200px 或提供自己的折叠。
+
+以 `mysql-manager` 为例:它应声明 `panel.scope: 'app'` 与 `panel.layout: 'workspace'`，
+内部的连接/对象树是插件自己的**内部侧栏**，不能把 MySSH 左侧服务器栏当成可重排区域，
+也不能通过 CSS 把 MySQL 工作台提升到顶栏或状态栏。
+
+### 1.2 样式自由度与宿主 Token
+
+样式采用“固定语义 token + 插件局部实现”的模式:插件可以设计内部信息架构和组件细节，
+但颜色、间距、圆角、字体必须优先使用宿主注入的以下变量，不得复制一套全局主题:
+
+| Token | 用途 |
+| --- | --- |
+| `--myssh-plugin-bg` / `--myssh-plugin-surface` / `--myssh-plugin-surface-raised` | 背景层级 |
+| `--myssh-plugin-surface-hover` | hover/选中前的覆盖层 |
+| `--myssh-plugin-border` / `--myssh-plugin-border-strong` | 发丝线与强调边框 |
+| `--myssh-plugin-text` / `--myssh-plugin-text-strong` / `--myssh-plugin-text-muted` | 文本层级 |
+| `--myssh-plugin-accent` / `--myssh-plugin-danger` / `--myssh-plugin-warning` / `--myssh-plugin-success` | 语义色 |
+| `--myssh-plugin-space-1` … `--myssh-plugin-space-4` | 4/8/12/16px 间距阶梯 |
+| `--myssh-plugin-radius-sm` / `md` / `lg` | 6/8/10px 圆角阶梯 |
+| `--myssh-plugin-font-ui` / `--myssh-plugin-font-mono` | UI 与等宽字体 |
+
+插件样式必须以插件根类为作用域，例如 `.mysql-manager { … }`，禁止未限定作用域地写
+`button`、`input`、`.tab`、`.panel` 等通用选择器。若需要运行时注入 CSS，必须给每条规则添加
+插件根类前缀，或使用 `@scope (.plugin-root) { … }` 将规则限制在插件根节点；禁止覆盖 `:root`、
+`body`、`#root` 或 MySSH 的宿主类。宿主 Token 是稳定契约，新增 Token
+必须先修改核心仓库的插件文档与类型/样式，再由插件仓库单独适配。
+
+交互样式遵循 [`docs/UI.md`](./UI.md):可点击元素有 `:hover`、`:active`、`:focus-visible`，
+hover 受媒体查询保护，禁止 `transition: all`，并尊重 `prefers-reduced-motion`。
+
+### 1.3 跨仓库变更流程
+
+插件仓库不能直接修改 `my-ssh`。需要新增插槽、Token、面板布局或宿主行为时，按以下顺序:
+
+1. 在 `my-ssh` 提 Issue，写清背景、范围、非目标、验收条件和兼容策略。
+2. 在 `my-ssh` 建立专门 PR，先实现向后兼容的宿主契约并更新本节文档。
+3. 核心 PR 合并并发布包含该契约的 MySSH 版本后，插件仓库再建独立 PR 迁移插件。
+4. 插件清单的 `minAppVersion` 收窄到包含契约的版本；插件 CI 运行构建、类型检查和接入冒烟。
+
+插件可以在核心 PR 合并前准备兼容代码，但不得假设未发布的宿主 Token 或行为已经存在。
 
 ## 2. 内置插件(核心仓库)
 
