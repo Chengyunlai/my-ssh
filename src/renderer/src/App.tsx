@@ -8,7 +8,7 @@ import {
   CloseIcon,
   EditIcon,
   GooeyLogoIcon,
-  MenuIcon,
+  LinkIcon,
   SearchIcon,
   SettingsIcon,
   TrashIcon
@@ -51,6 +51,112 @@ const STATUS_TEXT: Record<SessionStatus['status'], string> = {
   connected: '已连接',
   disconnected: '已断开',
   error: '连接失败'
+}
+
+interface WelcomeDashboardProps {
+  profiles: Profile[]
+  connectedCount: number
+  onConnect: (profile: Profile) => void
+  onNew: () => void
+}
+
+/** 无会话时的工作台:让首屏继续承担“选择服务器 / 新建连接”的任务。 */
+function WelcomeDashboard({
+  profiles,
+  connectedCount,
+  onConnect,
+  onNew
+}: WelcomeDashboardProps): React.JSX.Element {
+  const recentProfiles = profiles.slice(0, 3)
+
+  return (
+    <div className="welcome-dashboard">
+      <div className="welcome-head">
+        <div className="welcome-copy">
+          <span className="welcome-kicker">MYSSH WORKSPACE</span>
+          <h1>连接你的服务器</h1>
+          <p>从侧边栏选择一个配置，或创建新的 SSH 连接开始工作。</p>
+        </div>
+        <button className="btn btn-primary welcome-cta" onClick={onNew}>
+          <AddIcon size={15} />
+          新建服务器
+        </button>
+      </div>
+
+      <div className="dashboard-stats" aria-label="连接概览">
+        <div className="dashboard-stat dashboard-stat-accent">
+          <span>已保存服务器</span>
+          <strong>{profiles.length}</strong>
+          <small>{profiles.length ? '可从左侧快速连接' : '还没有连接配置'}</small>
+        </div>
+        <div className="dashboard-stat">
+          <span>活跃会话</span>
+          <strong>{connectedCount}</strong>
+          <small>{connectedCount ? '当前连接正常' : '连接后会显示在这里'}</small>
+        </div>
+        <div className="dashboard-stat">
+          <span>默认协议</span>
+          <strong>SSH</strong>
+          <small>密码或 PEM 私钥认证</small>
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <section className="dashboard-panel dashboard-guide">
+          <div className="dashboard-panel-head">
+            <div>
+              <span className="panel-kicker">QUICK START</span>
+              <h2>三步开始</h2>
+            </div>
+            <LinkIcon size={18} />
+          </div>
+          <div className="guide-list">
+            <div className="guide-item">
+              <span className="guide-index">01</span>
+              <div><strong>保存服务器配置</strong><p>记录主机、端口和认证方式</p></div>
+            </div>
+            <div className="guide-item">
+              <span className="guide-index">02</span>
+              <div><strong>建立 SSH 会话</strong><p>连接后即可打开多个终端</p></div>
+            </div>
+            <div className="guide-item">
+              <span className="guide-index">03</span>
+              <div><strong>开始远程工作</strong><p>终端、SFTP 与插件共用会话</p></div>
+            </div>
+          </div>
+        </section>
+
+        <section className="dashboard-panel dashboard-recent">
+          <div className="dashboard-panel-head">
+            <div>
+              <span className="panel-kicker">SAVED CONNECTIONS</span>
+              <h2>最近配置</h2>
+            </div>
+            <span className="dashboard-panel-count">{profiles.length}</span>
+          </div>
+          {recentProfiles.length > 0 ? (
+            <div className="dashboard-profile-list">
+              {recentProfiles.map((profile) => (
+                <button className="dashboard-profile" key={profile.id} onClick={() => onConnect(profile)}>
+                  <span className="dashboard-profile-icon"><LinkIcon size={15} /></span>
+                  <span className="dashboard-profile-main">
+                    <strong>{profile.name}</strong>
+                    <small>{profile.username}@{profile.host}:{profile.port}</small>
+                  </span>
+                  <span className="dashboard-profile-arrow">→</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="dashboard-empty">
+              <p>还没有保存的服务器配置。</p>
+              <button className="btn btn-ghost btn-sm" onClick={onNew}>创建第一个连接</button>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  )
 }
 
 
@@ -103,7 +209,6 @@ export default function App(): React.JSX.Element {
   const [statusMap, setStatusMap] = useState<Record<string, SessionStatus>>({})
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   /** app 级插件面板:独立于会话,挂在会话标签栏右侧 */
   const [appPanelActive, setAppPanelActive] = useState<string | null>(null)
   const [mountedAppPanelIds, setMountedAppPanelIds] = useState<Set<string>>(() => new Set())
@@ -461,43 +566,15 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="topbar-left">
-          <img className="topbar-logo" src={mysshIcon} alt="" aria-hidden="true" />
-          <span className="topbar-title">MySSH</span>
-          {activeSession && <span className="topbar-session">{activeSession.profile.name}</span>}
-        </div>
-        <div className="topbar-right">
-          <button
-            className={`icon-btn${sidebarOpen && view === 'main' ? ' active' : ''}`}
-            title="侧边栏"
-            aria-label="侧边栏"
-            onClick={() => {
-              // 设置页里侧边栏不渲染,直接点它 = 回到主视图并展开侧边栏,
-              // 避免只改隐藏状态导致返回主视图时状态对不上
-              if (view !== 'main') {
-                setView('main')
-                setSidebarOpen(true)
-              } else {
-                setSidebarOpen((v) => !v)
-              }
-            }}
-          >
-            <MenuIcon />
-          </button>
-          <button
-            className={`icon-btn${view === 'settings' ? ' active' : ''}`}
-            title="设置"
-            aria-label="设置"
-            onClick={() => setView((v) => (v === 'settings' ? 'main' : 'settings'))}
-          >
-            <SettingsIcon />
-          </button>
-        </div>
       </header>
 
       <div className="app-body">
-        {view === 'main' && sidebarOpen && (
+        {view === 'main' && (
           <aside className="sidebar">
+            <div className="sidebar-brand">
+              <img src={mysshIcon} alt="" aria-hidden="true" />
+              <span>MySSH</span>
+            </div>
             <div className="sidebar-header">
               <span className="sidebar-title">服务器</span>
               <span className="sidebar-count">{profiles.length}</span>
@@ -557,6 +634,15 @@ export default function App(): React.JSX.Element {
               <AddIcon size={16} />
               新建服务器
             </button>
+            <div className="sidebar-footer">
+              <button
+                className="sidebar-settings"
+                onClick={() => setView((v) => (v === 'settings' ? 'main' : 'settings'))}
+              >
+                <SettingsIcon size={16} />
+                设置
+              </button>
+            </div>
           </aside>
         )}
 
@@ -710,7 +796,11 @@ export default function App(): React.JSX.Element {
                               key={st.shellId}
                               className={`tab-pane${st.shellId === tab.activeSubTab ? '' : ' hidden'}`}
                             >
-                              <TerminalView sessionId={tab.sessionId} shellId={st.shellId} />
+                              <TerminalView
+                                sessionId={tab.sessionId}
+                                shellId={st.shellId}
+                                active={isActive && st.shellId === tab.activeSubTab}
+                              />
                             </div>
                           ))}
                         </>
@@ -791,11 +881,12 @@ export default function App(): React.JSX.Element {
                         )}
                       </div>
                     ) : (
-                      <div className="empty-state">
-                        <img className="empty-state-logo" src={mysshIcon} alt="" aria-hidden="true" />
-                        <h2>连接你的服务器</h2>
-                        <p>在左侧选择服务器,或用侧边栏「+」配置账号密码 / PEM 私钥</p>
-                      </div>
+                      <WelcomeDashboard
+                        profiles={profiles}
+                        connectedCount={connectedProfileIds.size}
+                        onConnect={(profile) => void connect(profile)}
+                        onNew={handleNew}
+                      />
                     )}
                   </>
                 )}

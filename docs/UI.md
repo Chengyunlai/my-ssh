@@ -12,12 +12,12 @@
   --font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, "Cascadia Code", Consolas, monospace;
 
-  /* 颜色:用户指定近黑中性灰(#161616 / #080808)+ 强调蓝 #61a6fb(用户配色) */
-  --bg: #161616;            /* 主区 / 侧边栏底色 */
-  --bg-panel: #181818;      /* 侧边栏 / 标签栏(微亮一档,保持扁平) */
-  --bg-raised: #2a2a2a;     /* 活动标签 / 浮层 / 弹层 */
-  --bg-hover: #222222;      /* 列表 hover */
-  --input-bg: #1c1c1c;      /* 输入框 */
+  /* 颜色:中性深灰工作区 + 深色侧栏 + 强调蓝 #61a6fb */
+  --bg: #222225;            /* 工作区 / 主区底色 */
+  --bg-panel: #19191c;      /* 侧边栏 / 顶栏 / 标签栏 */
+  --bg-raised: #303034;     /* 卡片 / 活动标签 / 浮层 */
+  --bg-hover: #29292d;      /* 列表 hover */
+  --input-bg: #202024;      /* 输入框 */
   /* 发丝线边框 + 交互覆盖层:前景色 alpha 混合,随主题自动翻转(pi-gui 做法) */
   --border-light: color-mix(in srgb, var(--text-bright) 7%, transparent);
   --border: color-mix(in srgb, var(--text-bright) 12%, transparent);
@@ -81,8 +81,8 @@
 }
 ```
 
-> 视觉方向为「现代终端工具质感」(配色按用户指定 #161616/#080808/#61a6fb,结构参考 pi-gui):
-> 统一顶栏(logo + 标题 + 连接状态 + 操作按钮)+ 可折叠侧边栏(服务器列表)+ 主区终端 +
+> 视觉方向为「现代终端工具质感」(配色按 #222225/#080808/#61a6fb,结构参考 pi-gui):
+> 统一顶栏(纯窗口拖拽区)+ 侧边栏(品牌 + 服务器列表 + 底部设置)+ 主区终端 +
 > 底部状态栏;无活动栏,去掉 VS Code 式图标栏。终端画布用独立 `--terminal-bg`(#080808),
 > 不跟随 `--bg`。面板内边距统一以文件面板(`.sftp-panel`)为准,均为 `12px`;终端
 > 横向内边距 `25px`(12 面板 + 1 边框 + 12 单元格),使终端输出起点与文件列表表格文本对齐,输出不贴边。主按钮 accent 绿底深字
