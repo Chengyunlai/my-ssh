@@ -90,6 +90,62 @@ export interface SftpReadProgress {
   percent: number
 }
 
+export type SystemMetricsErrorCode =
+  | 'session-not-found'
+  | 'not-ready'
+  | 'unsupported'
+  | 'timeout'
+  | 'output-limit'
+  | 'rate-limited'
+  | 'busy'
+  | 'remote-error'
+  | 'parse-error'
+
+export interface SystemMetricsError {
+  code: SystemMetricsErrorCode
+  message: string
+  retryAfterMs?: number
+}
+
+export interface SystemMetricsSnapshot {
+  /** 主机采集完成时间(Unix milliseconds)。 */
+  sampledAt: number
+  platform: 'linux'
+  cpu: {
+    usagePercent: number | null
+    load1: number
+    load5: number
+    load15: number
+    sampleStatus: 'ready' | 'insufficient-data'
+  }
+  memory: {
+    totalBytes: number
+    usedBytes: number
+    availableBytes: number
+    usagePercent: number
+    swapTotalBytes: number
+    swapUsedBytes: number
+    swapUsagePercent: number
+  }
+  disks: Array<{
+    mountPoint: string
+    totalBytes: number
+    usedBytes: number
+    availableBytes: number
+    usagePercent: number
+  }>
+  network: Array<{
+    interface: string
+    rxBytes: number
+    txBytes: number
+  }>
+  uptimeSeconds: number
+}
+
+export type SystemMetricsResult =
+  | { ok: true; snapshot: SystemMetricsSnapshot }
+  | { ok: false; error: SystemMetricsError }
+
 export interface AppInfo {
   name: string
   version: string
@@ -314,5 +370,9 @@ export interface SshApi {
     getState(capability: string): Promise<PluginRuntimeStateInfo>
     onState(capability: string, cb: (state: PluginRuntimeStateInfo) => void): () => void
     stop(capability: string): Promise<void>
+  }
+  monitor: {
+    /** 通过当前 SSH 会话获取一次受控 Linux 指标快照。 */
+    getSnapshot(sessionId: string): Promise<SystemMetricsResult>
   }
 }

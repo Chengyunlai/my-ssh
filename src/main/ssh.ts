@@ -8,11 +8,14 @@ import { logError } from './logger'
 interface Session {
   client: Client
   sessionId: string
+  owner: WebContents
   streams: Map<string, ClientChannel>
   /** 同一 SSH 连接内 shell 计数,用于生成可读名称(终端 1 / 终端 2 …) */
   shellSeq: number
   /** 每个 shell 独立的 cwd */
   cwds: Map<string, string>
+  /** 独立 exec 通道,会话结束时统一销毁,避免监控/其他后台请求悬挂。 */
+  execChannels: Set<ClientChannel>
   ready: boolean
 }
 
@@ -135,22 +138,129 @@ export function whenReady(sessionId: string, timeoutMs = 15_000): Promise<void> 
 }
 
 let closedHook: ((sessionId: string) => void) | undefined
+const closedHooks = new Set<(sessionId: string) => void>()
 
 export function setOnSessionClosed(cb: (sessionId: string) => void): void {
   closedHook = cb
+}
+
+export function addOnSessionClosed(cb: (sessionId: string) => void): () => void {
+  closedHooks.add(cb)
+  return () => closedHooks.delete(cb)
 }
 
 export function getClient(sessionId: string): Client | undefined {
   return sessions.get(sessionId)?.client
 }
 
+/** 监控等 session 级能力可用它确认请求来自创建该会话的 renderer。 */
+export function isSessionOwnedBy(sessionId: string, owner: WebContents): boolean {
+  return sessions.get(sessionId)?.owner === owner
+}
+
+export type ExecCommandErrorCode = 'session-not-found' | 'not-ready' | 'timeout' | 'output-limit' | 'remote-error'
+
+export class ExecCommandError extends Error {
+  constructor(
+    public readonly code: ExecCommandErrorCode,
+    message: string
+  ) {
+    super(message)
+    this.name = 'ExecCommandError'
+  }
+}
+
+export interface ExecCommandResult {
+  stdout: string
+  stderr: string
+  exitCode: number | null
+}
+
+/**
+ * 主进程内部受控 exec seam。调用方必须传入代码中的固定命令,renderer/preload 不暴露该能力。
+ * 通道不分配 PTY,有独立超时和 stdout/stderr 总输出上限。
+ */
+export function execCommand(
+  sessionId: string,
+  command: string,
+  options: { timeoutMs: number; maxOutputBytes: number }
+): Promise<ExecCommandResult> {
+  const session = sessions.get(sessionId)
+  if (!session) return Promise.reject(new ExecCommandError('session-not-found', 'SSH 会话不存在,请先连接'))
+  if (!session.ready) return Promise.reject(new ExecCommandError('not-ready', 'SSH 会话尚未就绪'))
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let stdout = ''
+    let stderr = ''
+    let outputBytes = 0
+    let exitCode: number | null = null
+    let stream: ClientChannel | undefined
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      if (stream) {
+        session.execChannels.delete(stream)
+        stream.destroy()
+      }
+      reject(new ExecCommandError('timeout', '远程指标采集超时'))
+    }, options.timeoutMs)
+    const finish = (err?: Error): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      if (stream) session.execChannels.delete(stream)
+      if (err) reject(err)
+      else if (!sessions.has(sessionId)) reject(new ExecCommandError('session-not-found', 'SSH 会话已关闭'))
+      else resolve({ stdout, stderr, exitCode })
+    }
+    const append = (target: 'stdout' | 'stderr', chunk: Buffer): void => {
+      if (settled) return
+      outputBytes += chunk.byteLength
+      if (outputBytes > options.maxOutputBytes) {
+        finish(new ExecCommandError('output-limit', '远程指标采集输出超过大小限制'))
+        stream?.destroy()
+        return
+      }
+      if (target === 'stdout') stdout += chunk.toString('utf8')
+      else stderr += chunk.toString('utf8')
+    }
+    session.client.exec(command, (err, channel) => {
+      if (settled) {
+        channel?.destroy()
+        return
+      }
+      if (err) {
+        finish(new ExecCommandError('remote-error', err.message))
+        return
+      }
+      stream = channel
+      if (!sessions.has(sessionId)) {
+        channel.destroy()
+        finish(new ExecCommandError('session-not-found', 'SSH 会话已关闭'))
+        return
+      }
+      session.execChannels.add(channel)
+      channel.on('data', (chunk: Buffer) => append('stdout', chunk))
+      channel.stderr.on('data', (chunk: Buffer) => append('stderr', chunk))
+      channel.on('exit', (code: number) => {
+        exitCode = code
+      })
+      channel.on('close', () => finish())
+      channel.on('error', (channelErr: Error) => finish(new ExecCommandError('remote-error', channelErr.message)))
+    })
+  })
+}
+
 function cleanup(sessionId: string): void {
   const session = sessions.get(sessionId)
   if (session) {
     for (const stream of session.streams.values()) stream.end()
+    for (const channel of session.execChannels) channel.destroy()
+    session.execChannels.clear()
     session.client.end()
     sessions.delete(sessionId)
     closedHook?.(sessionId)
+    for (const hook of closedHooks) hook(sessionId)
   }
 }
 
@@ -345,8 +455,20 @@ function send(webContents: WebContents, status: SessionStatus): void {
 export function connect(profile: Profile, webContents: WebContents): { sessionId: string } {
   const sessionId = randomUUID()
   const client = new Client()
-  const session: Session = { client, sessionId, streams: new Map(), shellSeq: 0, cwds: new Map(), ready: false }
+  const session: Session = {
+    client,
+    sessionId,
+    owner: webContents,
+    streams: new Map(),
+    shellSeq: 0,
+    cwds: new Map(),
+    execChannels: new Set(),
+    ready: false
+  }
   sessions.set(sessionId, session)
+  webContents.once('destroyed', () => {
+    if (sessions.get(sessionId)?.owner === webContents) cleanup(sessionId)
+  })
 
   // 连接阶段进度:TCP -> 握手 -> 认证 -> 建立会话
   const sendProgress = (percent: number): void => {

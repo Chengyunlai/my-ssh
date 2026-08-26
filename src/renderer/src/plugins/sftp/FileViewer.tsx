@@ -37,6 +37,7 @@ interface Props {
 
 /** 超过该体积的文本预览跳过语法高亮与编辑增强,避免大文件卡住 UI */
 const LARGE_TEXT_BYTES = 512 * 1024
+const OFFICE_PARSE_TIMEOUT_MS = 10_000
 
 /**
  * 语法高亮映射:预览与编辑共用同一份规则。
@@ -142,13 +143,26 @@ export default function FileViewer({
   // docx / xlsx 解析预览:解析放到 Web Worker,避免大文档卡住 UI 主线程
   useEffect(() => {
     if (result?.kind !== 'office' || !result.bytes) return
+    if (result.truncated) {
+      setOfficeLoading(false)
+      setOfficeError('文件超过预览大小限制,请下载后查看')
+      setOfficeHtml(null)
+      return
+    }
     let disposed = false
     const ext = name.split('.').pop()?.toLowerCase() ?? ''
     setOfficeLoading(true)
     setOfficeError(null)
     setOfficeHtml(null)
     const worker = new Worker(new URL('./office.worker.ts', import.meta.url), { type: 'module' })
+    const timeout = window.setTimeout(() => {
+      if (disposed) return
+      setOfficeLoading(false)
+      setOfficeError('文档解析超时,文件可能过于复杂,请下载后查看')
+      worker.terminate()
+    }, OFFICE_PARSE_TIMEOUT_MS)
     worker.onmessage = (e: MessageEvent<OfficeParseResponse>): void => {
+      window.clearTimeout(timeout)
       if (disposed) {
         worker.terminate()
         return
@@ -160,12 +174,16 @@ export default function FileViewer({
       } else {
         // 净化仍依赖 DOM,放回渲染主线程(解析是重活,净化很轻)
         void import('dompurify').then(({ default: purify }) => {
-          if (!disposed) setOfficeHtml(purify.sanitize(res.html ?? ''))
+          if (!disposed) {
+            setOfficeHtml(purify.sanitize(res.html ?? ''))
+            if (res.limited) setOfficeError('文档过大,仅展示部分内容')
+          }
         })
       }
       worker.terminate()
     }
     worker.onerror = (e): void => {
+      window.clearTimeout(timeout)
       if (!disposed) {
         setOfficeLoading(false)
         setOfficeError(e.message || '文档解析失败')
@@ -175,6 +193,7 @@ export default function FileViewer({
     worker.postMessage({ ext, bytes: result.bytes })
     return () => {
       disposed = true
+      window.clearTimeout(timeout)
       worker.terminate()
     }
   }, [result, name])

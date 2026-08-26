@@ -1,5 +1,5 @@
 import mammoth from 'mammoth'
-import * as XLSX from 'xlsx'
+import { limitHtmlPreview, parseSpreadsheetPreview } from './office-preview'
 
 export interface OfficeParseRequest {
   ext: string
@@ -9,6 +9,7 @@ export interface OfficeParseRequest {
 export interface OfficeParseResponse {
   ok: boolean
   html?: string
+  limited?: boolean
   error?: string
 }
 
@@ -18,24 +19,24 @@ self.onmessage = (e: MessageEvent<OfficeParseRequest>): void => {
   const { ext, bytes } = e.data
   void (async () => {
     try {
-      let html: string
       if (ext === 'docx') {
         const arrayBuffer = bytes.buffer.slice(
           bytes.byteOffset,
           bytes.byteOffset + bytes.byteLength
         ) as ArrayBuffer
         const out = await mammoth.convertToHtml({ arrayBuffer })
-        html = out.value
+        const limited = limitHtmlPreview(out.value)
+        const res: OfficeParseResponse = { ok: true, html: limited.html, limited: limited.limited }
+        self.postMessage(res)
+        return
       } else if (ext === 'xlsx' || ext === 'xls') {
-        const wb = XLSX.read(bytes, { type: 'array' })
-        const sheet = wb.Sheets[wb.SheetNames[0]]
-        if (!sheet) throw new Error('表格中没有可预览的工作表')
-        html = XLSX.utils.sheet_to_html(sheet)
+        const parsed = parseSpreadsheetPreview(bytes)
+        const res: OfficeParseResponse = { ok: true, html: parsed.html, limited: parsed.limited }
+        self.postMessage(res)
+        return
       } else {
         throw new Error('暂不支持预览 .doc 格式,请下载后查看')
       }
-      const res: OfficeParseResponse = { ok: true, html }
-      self.postMessage(res)
     } catch (err) {
       const res: OfficeParseResponse = {
         ok: false,

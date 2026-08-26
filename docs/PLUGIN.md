@@ -101,7 +101,30 @@ function Panel({ runtime }: { runtime?: PluginRuntimeContext }) {
 内部的连接/对象树是插件自己的**内部侧栏**，不能把 MySSH 左侧服务器栏当成可重排区域，
 也不能通过 CSS 把 MySQL 工作台提升到顶栏或状态栏。
 
-### 1.3 样式自由度与宿主 Token
+### 1.3 SSH 系统指标宿主 API
+
+需要展示当前服务器 CPU、内存、磁盘或网络指标的插件应声明
+`panel.scope: 'session'`，在面板处于 active 状态时按约 3 秒间隔调用：
+
+```ts
+const result = await window.ssh.monitor.getSnapshot(sessionId)
+if (result.ok) {
+  // result.snapshot.cpu / memory / disks / network / uptimeSeconds
+} else {
+  // result.error.code: unsupported / timeout / rate-limited / ...
+}
+```
+
+宿主只支持当前连接的 Linux 主机。采集使用独立 SSH exec 通道，不会把输出混入用户终端；插件
+不能提交命令、环境变量、端口或凭据。单次采集有超时、输出上限和 session 级节流，同一 session
+同时只允许一个请求；宿主还会校验 sessionId 属于当前 renderer 窗口。CPU 首次采样的 `usagePercent` 为 `null` 且 `sampleStatus` 为
+`insufficient-data`；网络接口返回累计收发字节，速率由插件根据两次快照计算。
+
+插件必须在面板隐藏或卸载时停止轮询，并将 `unsupported`、`timeout`、`rate-limited`、
+`insufficient-data` 作为正常状态处理。关闭 SSH 会话后宿主会清理后续采样状态；该 API 不提供
+后台采集、长期历史、多服务器聚合或任意命令执行能力。
+
+### 1.4 样式自由度与宿主 Token
 
 样式采用“固定语义 token + 插件局部实现”的模式:插件可以设计内部信息架构和组件细节，
 但颜色、间距、圆角、字体必须优先使用宿主注入的以下变量，不得复制一套全局主题:
@@ -126,7 +149,7 @@ function Panel({ runtime }: { runtime?: PluginRuntimeContext }) {
 交互样式遵循 [`docs/UI.md`](./UI.md):可点击元素有 `:hover`、`:active`、`:focus-visible`，
 hover 受媒体查询保护，禁止 `transition: all`，并尊重 `prefers-reduced-motion`。
 
-### 1.4 跨仓库变更流程
+### 1.5 跨仓库变更流程
 
 插件仓库不能直接修改 `my-ssh`。需要新增插槽、Token、面板布局或宿主行为时，按以下顺序:
 
