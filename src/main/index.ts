@@ -2,6 +2,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, protocol } from '
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as market from './market'
+import * as monitor from './monitor'
 import * as logger from './logger'
 import * as profiles from './profiles'
 import * as sftp from './sftp'
@@ -189,6 +190,17 @@ function registerIpc(): void {
   ipcMain.handle('ssh:open-shell', (e, sessionId: string) => ssh.openShell(sessionId, e.sender))
   ipcMain.handle('ssh:close-shell', (_e, sessionId: string, shellId: string) => ssh.closeShell(sessionId, shellId))
   ipcMain.handle('ssh:cwd', (_e, sessionId: string) => ssh.getCwd(sessionId))
+  ipcMain.handle('monitor:snapshot', (e, sessionId: string) =>
+    safeHandle('monitor:snapshot', () => {
+      if (!ssh.isSessionOwnedBy(sessionId, e.sender)) {
+        return {
+          ok: false as const,
+          error: { code: 'session-not-found' as const, message: 'SSH 会话不存在或不属于当前窗口' }
+        }
+      }
+      return monitor.getSnapshot(sessionId)
+    })
+  )
   ipcMain.on('clipboard:copy', (_e, text: string) => clipboard.writeText(text))
 
   ipcMain.handle('app:info', () => storage.appInfo())

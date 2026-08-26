@@ -36,13 +36,14 @@ MySSH 会处理服务器凭据、远程文件和可执行终端会话。请勿�
 - 新依赖需检查维护状态、许可证和已知漏洞；安全更新不能仅依赖自动化工具。
 - 发布产物应逐步完成平台签名、notarization、校验和可追溯构建。
 
-## 已知依赖风险
+## 已处置的依赖风险
 
-截至 2026-08-20，生产依赖 `xlsx@0.18.5` 存在 1 个 **high** 级风险，涉及原型污染
-（[GHSA-4r6h-8v6p-xvw6](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6)）和正则表达式拒绝服务
-（[GHSA-5pgg-2g8v-p4x9](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9)），npm 当前没有可用修复版本。
+原生产依赖 `xlsx@0.18.5` 的 Prototype Pollution（[GHSA-4r6h-8v6p-xvw6](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6)）
+和 ReDoS（[GHSA-5pgg-2g8v-p4x9](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9)）已迁移至 SheetJS
+官方 CDN 的 `xlsx@0.20.3` 修复包。依赖 URL 和 SHA-512 integrity 固定在
+`package-lock.json`；使用官方 npm registry 执行 `npm audit --omit=dev` 应不再报告这两个风险。
 
-当前缓解措施是仅在用户主动预览远程表格时解析、限制读取大小、放入独立 Web Worker，并用
-DOMPurify 净化生成的 HTML。这些措施**不代表漏洞已修复**，尤其不能完全消除恶意文件造成的资源耗尽。
-在替换解析库或上游提供修复前，该风险保留在 `ROADMAP.md` 的 Now 阶段；CI 阻止新增 critical
-生产依赖风险，并持续显示该 high 风险供人工审查。
+表格输入仍按不可信文件处理：Office 读取上限 10 MiB，SFTP 预览有超时，解析在独立 Worker 中
+执行并带 10 秒 watchdog，解析只读取首个工作表的前 1000 行，渲染阶段限制列数/单元格数，
+生成 HTML 也有上限，最终 HTML 继续通过 DOMPurify 净化。上述措施用于限制资源消耗，
+不替代依赖升级。

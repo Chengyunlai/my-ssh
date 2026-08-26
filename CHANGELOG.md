@@ -39,6 +39,11 @@
 
 <!-- 新版本的变更在这里积累,发版时把内容挪到下方新版本条目里。 -->
 
+- **安全**:将 Office 预览依赖从 `xlsx@0.18.5` 迁移至官方 SheetJS `0.20.3` 修复包；增加
+  表格行列/单元格/HTML 上限、SFTP 读取超时和 Worker 解析 watchdog
+- **新增**:为 session 级插件提供受控 Linux SSH 指标快照 API，固定 exec 采集命令、结构化错误、
+  采样节流和 session 生命周期清理
+
 ## [1.1.3] - 2026-08-20
 
 - **修复**:macOS 检查更新报「ZIP file not provided」— macOS 产物补充 `zip` 目标(electron-updater 在 macOS 只认 zip 产物,dmg 仅供手动安装),自动更新链路恢复可用

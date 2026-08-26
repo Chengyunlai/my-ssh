@@ -16,7 +16,8 @@ import type {
   IpcResult,
   SshApi,
   PluginRuntimeEndpoint,
-  PluginRuntimeStateInfo
+  PluginRuntimeStateInfo,
+  SystemMetricsResult
 } from '@shared/types'
 
 /** 解包主进程的结构化结果;失败时抛出,供渲染端 try/catch 使用 */
@@ -131,6 +132,9 @@ const api: SshApi = {
       return () => ipcRenderer.removeListener('plugin-runtime:state', listener)
     },
     stop: (capability) => invokeSafe<void>('plugin-runtime:stop', capability)
+  },
+  monitor: {
+    getSnapshot: (sessionId) => invokeSafe<SystemMetricsResult>('monitor:snapshot', sessionId)
   }
 }
 

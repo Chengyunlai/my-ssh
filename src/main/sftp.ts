@@ -22,8 +22,12 @@ let previewCacheBytes = 0
 
 /** 在线预览/编辑的读取上限:超过则截断读取并标记 */
 const MAX_PREVIEW_BYTES = 5 * 1024 * 1024
-/** pdf / office 文档预览上限(二进制解析开销大,放宽到 20MB) */
+/** PDF 预览上限(二进制解析开销大,放宽到 20MB)。Office 使用更严格的专属上限。 */
 const MAX_DOC_BYTES = 20 * 1024 * 1024
+/** Office 解析器的复杂度更难由文件大小反映,使用更严格的读取上限。 */
+const MAX_OFFICE_BYTES = 10 * 1024 * 1024
+const PREVIEW_READ_TIMEOUT_MS = 15_000
+const PREVIEW_OPERATION_TIMEOUT_MS = 20_000
 
 /** 走二进制解析的文档扩展(docx / xlsx 等) */
 const DOC_EXTS = new Set(['docx', 'xlsx', 'xls', 'doc'])
@@ -60,6 +64,30 @@ function entryType(attrs: Attributes): 'file' | 'dir' | 'link' {
 
 function send(webContents: WebContents, channel: string, payload: unknown): void {
   if (!webContents.isDestroyed()) webContents.send(channel, payload)
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+  onTimeout?: () => void
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      onTimeout?.()
+      reject(new Error(message))
+    }, timeoutMs)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err: unknown) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
 }
 
 function cacheKey(sessionId: string, remotePath: string): string {
@@ -194,15 +222,23 @@ export function read(
   remotePath: string,
   webContents: WebContents
 ): Promise<SftpReadResult> {
-  return getSftp(sessionId).then(
-    (sftp) =>
-      new Promise<SftpReadResult>((resolve, reject) => {
+  let cancelled = false
+  let cancelActiveRead: (() => void) | undefined
+  return withTimeout(
+    getSftp(sessionId).then(
+      (sftp) =>
+        new Promise<SftpReadResult>((resolve, reject) => {
+        if (cancelled) {
+          reject(new Error('预览操作超时'))
+          return
+        }
         const sendProgress = (percent: number): void => {
           if (!webContents.isDestroyed()) {
             webContents.send('sftp:read-progress', { sessionId, remotePath, percent })
           }
         }
         sftp.stat(remotePath, (statErr, st) => {
+          if (cancelled) return
           if (statErr) return reject(statErr)
           const size = st.size ?? 0
           const mtime = st.mtime ?? 0
@@ -215,7 +251,11 @@ export function read(
           }
           const ext = extOf(remotePath)
           const limit =
-            ext === 'pdf' || DOC_EXTS.has(ext) || IMAGE_MIME[ext] ? MAX_DOC_BYTES : MAX_PREVIEW_BYTES
+            DOC_EXTS.has(ext)
+              ? MAX_OFFICE_BYTES
+              : ext === 'pdf' || IMAGE_MIME[ext]
+                ? MAX_DOC_BYTES
+                : MAX_PREVIEW_BYTES
           const truncated = size > limit
           const readTarget = Math.max(truncated ? limit : size, 1)
           const done = (result: SftpReadResult): void => {
@@ -227,33 +267,71 @@ export function read(
               const chunks: Buffer[] = []
               let received = 0
               let lastEmit = 0
+              let settled = false
               const stream = sftp.createReadStream(
                 remotePath,
                 truncated ? { end: limit - 1 } : {}
               )
+              cancelActiveRead = () => {
+                if (settled) return
+                settled = true
+                clearTimeout(timer)
+                stream.destroy()
+                rej(new Error('预览操作超时'))
+              }
+              const timer = setTimeout(() => {
+                if (settled) return
+                settled = true
+                cancelActiveRead = undefined
+                stream.destroy(new Error('预览读取超时'))
+                rej(new Error('预览读取超时'))
+              }, PREVIEW_READ_TIMEOUT_MS)
               stream.on('data', (c: Buffer) => {
+                if (settled) return
                 chunks.push(c)
                 received += c.length
+                if (received > readTarget) {
+                  settled = true
+                  clearTimeout(timer)
+                  cancelActiveRead = undefined
+                  stream.destroy(new Error('预览内容超过大小限制'))
+                  rej(new Error('预览内容超过大小限制'))
+                  return
+                }
                 const now = Date.now()
                 if (now - lastEmit >= 80 || received >= readTarget) {
                   lastEmit = now
                   sendProgress(Math.min(100, Math.round((received / readTarget) * 100)))
                 }
               })
-              stream.on('error', rej)
-              stream.on('end', () => res(Buffer.concat(chunks)))
+              stream.on('error', (err: Error) => {
+                if (settled) return
+                settled = true
+                clearTimeout(timer)
+                cancelActiveRead = undefined
+                rej(err)
+              })
+              stream.on('end', () => {
+                if (settled) return
+                settled = true
+                clearTimeout(timer)
+                cancelActiveRead = undefined
+                res(Buffer.concat(chunks))
+              })
             })
           readFile()
             .then((buf) => {
+              if (cancelled) return
               const mime = IMAGE_MIME[ext]
               if (mime) {
                 let dataUrl = `data:${mime};base64,${buf.toString('base64')}`
                 if (NEEDS_DECODE.has(ext)) {
                   const img = nativeImage.createFromBuffer(buf)
-                if (!img.isEmpty()) {
+                  if (!img.isEmpty() && !cancelled) {
                     dataUrl = `data:image/png;base64,${img.toPNG().toString('base64')}`
                   }
                 }
+                if (cancelled) return
                 done({
                   kind: 'image',
                   dataUrl,
@@ -263,6 +341,7 @@ export function read(
                 return
               }
               if (ext === 'pdf') {
+                if (cancelled) return
                 done({
                   kind: 'pdf',
                   dataUrl: `data:application/pdf;base64,${buf.toString('base64')}`,
@@ -272,6 +351,7 @@ export function read(
                 return
               }
               if (DOC_EXTS.has(ext)) {
+                if (cancelled) return
                 done({
                   kind: 'office',
                   bytes: new Uint8Array(buf),
@@ -281,14 +361,23 @@ export function read(
                 return
               }
               if (buf.subarray(0, 8192).includes(0)) {
+                if (cancelled) return
                 done({ kind: 'binary', size, truncated })
                 return
               }
+              if (cancelled) return
               done({ kind: 'text', content: buf.toString('utf8'), size, truncated })
             })
             .catch(reject)
         })
-      })
+        })
+    ),
+    PREVIEW_OPERATION_TIMEOUT_MS,
+    '预览操作超时',
+    () => {
+      cancelled = true
+      cancelActiveRead?.()
+    }
   )
 }
 
