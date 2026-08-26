@@ -44,5 +44,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Block critical vulnerabilities (known xlsx high is documented)
-        run: npm audit --omit=dev --audit-level=critical --registry=https://registry.npmjs.org
+      - name: Block high or critical production vulnerabilities
+        run: npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
