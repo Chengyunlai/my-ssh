@@ -300,16 +300,24 @@ export function closeShell(sessionId: string, shellId: string): boolean {
     return true
   }
   removeShell(session, shellId)
+  // 不等待远端 PTY 自己发送 close:部分 SSH 服务只响应 EOF,导致 renderer
+  // 一直保留已关闭的子标签。先从 session 摘除后立即通知 renderer,再强制
+  // 收口 channel; stream.close 触发的异步回调会因 map 中已无该 shell 而幂等跳过。
+  if (!session.owner.isDestroyed()) {
+    session.owner.send('ssh:shell-status', { sessionId, shellId, status: 'closed' })
+  }
+  stream.close()
   return true
 }
 
 /** 从 session 中摘除单个 shell,不影响 SSH 连接 */
-function removeShell(session: Session, shellId: string): void {
+function removeShell(session: Session, shellId: string): boolean {
   const stream = session.streams.get(shellId)
-  if (!stream) return
+  if (!stream) return false
   stream.end()
   session.streams.delete(shellId)
   session.cwds.delete(shellId)
+  return true
 }
 
 /**
@@ -434,7 +442,9 @@ function setupShell(
     stream.on('close', () => {
       batcher.dispose()
       if (!sessions.has(sessionId)) return
-      removeShell(session, shellId)
+      // closeShell() 可能已先行摘除并通知 renderer;此处仅处理仍在 map
+      // 中的自然断开,避免同一 shell 发出两次 closed 事件。
+      if (!removeShell(session, shellId)) return
       webContents.send('ssh:shell-status', { sessionId, shellId, status: 'closed' })
       // 所有 shell 都关闭 = 会话结束
       if (session.streams.size === 0) {
