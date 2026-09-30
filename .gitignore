@@ -3,5 +3,6 @@ out/
 dist/
 .DS_Store
 *.log
+*.tsbuildinfo
 
 .dev/
