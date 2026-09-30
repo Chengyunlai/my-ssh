@@ -17,7 +17,8 @@ import type {
   SshApi,
   PluginRuntimeEndpoint,
   PluginRuntimeStateInfo,
-  SystemMetricsResult
+  SystemMetricsResult,
+  ServiceScanResult
 } from '@shared/types'
 
 /** 解包主进程的结构化结果;失败时抛出,供渲染端 try/catch 使用 */
@@ -107,6 +108,7 @@ const api: SshApi = {
   pickLocalDirectory: () => ipcRenderer.invoke('dialog:pickDir'),
   pickSaveFile: (defaultName) => ipcRenderer.invoke('dialog:saveFile', defaultName),
   copyText: (text) => ipcRenderer.send('clipboard:copy', text),
+  openExternal: (url) => invokeSafe<boolean>('shell:open-external', url),
   getPathForFile: (file: { name: string }) => webUtils.getPathForFile(file as never),
   appInfo: () => ipcRenderer.invoke('app:info'),
   storageScan: (pluginIds) => ipcRenderer.invoke('storage:scan', pluginIds),
@@ -135,6 +137,9 @@ const api: SshApi = {
   },
   monitor: {
     getSnapshot: (sessionId) => invokeSafe<SystemMetricsResult>('monitor:snapshot', sessionId)
+  },
+  serviceScan: {
+    run: (sessionId) => invokeSafe<ServiceScanResult>('service-scan:run', sessionId)
   }
 }
 

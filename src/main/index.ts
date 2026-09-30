@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, protocol } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, protocol, shell } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as market from './market'
@@ -6,10 +6,12 @@ import * as monitor from './monitor'
 import * as logger from './logger'
 import * as profiles from './profiles'
 import * as sftp from './sftp'
+import * as serviceScan from './service-scan'
 import * as ssh from './ssh'
 import * as storage from './storage'
 import * as updater from './updater'
 import { PluginRuntimeManager } from './plugin-runtime'
+import { safeExternalUrl } from '@shared/external-url'
 import type { Profile, UpdateState } from '@shared/types'
 import type { IpcResult } from '@shared/types'
 
@@ -201,7 +203,28 @@ function registerIpc(): void {
       return monitor.getSnapshot(sessionId)
     })
   )
+  ipcMain.handle('service-scan:run', (e, sessionId: string) =>
+    safeHandle('service-scan:run', () => {
+      if (!ssh.isSessionOwnedBy(sessionId, e.sender)) {
+        return {
+          ok: false as const,
+          error: { code: 'session-not-found' as const, message: 'SSH 会话不存在或不属于当前窗口' }
+        }
+      }
+      return serviceScan.scanServices(sessionId)
+    })
+  )
   ipcMain.on('clipboard:copy', (_e, text: string) => clipboard.writeText(text))
+
+  // 白名单在 shared 层，和判断逻辑一起被单测锁住；这里不做第二次「宽松处理」。
+  ipcMain.handle('shell:open-external', (_e, url: string) =>
+    safeHandle('shell:open-external', async () => {
+      const target = safeExternalUrl(url)
+      if (!target) return false
+      await shell.openExternal(target)
+      return true
+    })
+  )
 
   ipcMain.handle('app:info', () => storage.appInfo())
   ipcMain.handle('storage:scan', (_e, pluginIds: string[]) => storage.scan(pluginIds))

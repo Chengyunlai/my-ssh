@@ -124,6 +124,52 @@ if (result.ok) {
 `insufficient-data` 作为正常状态处理。关闭 SSH 会话后宿主会清理后续采样状态；该 API 不提供
 后台采集、长期历史、多服务器聚合或任意命令执行能力。
 
+### 1.3.1 服务发现宿主 API（监听端口 / 域名入口）
+
+需要展示当前服务器监听了哪些端口、以及这些端口对外用什么域名访问的插件，应声明
+`panel.scope: 'session'`，在面板首次可见时调用一次（不要轮询）：
+
+```ts
+const result = await window.ssh.serviceScan.run(sessionId)
+if (result.ok) {
+  // result.snapshot.counts / services / applications / entrances / proxy
+} else {
+  // result.error.code: unsupported / timeout / output-limit / rate-limited / busy / ...
+}
+```
+
+采集是四段**固定只读内省**，全部由宿主执行，插件不能提交命令、路径、环境变量、端口或凭据：
+
+1. `ss -tlnp` / `ss -ulnp`；无 `ss` 时退化到 `/proc/net/*`（只拿到端口，拿不到进程名，会记 warning）
+2. `docker ps`（容器端口映射，用于把宿主端口接回容器）
+3. nginx **实际加载**的配置：`nginx.conf` + `conf.d/*.conf` + `sites-enabled/*`
+   （不读 `sites-available`：那是未启用的池子，里面还有 `.bak` 备份）
+4. `/etc/os-release`、`id -u`
+
+返回的收敛链是 `监听记录 → 服务 → 应用`，另附 `entrances`（服务的域名入口）与 `proxy`（反向代理层情况）：
+
+- `services` / `applications`：同一 `(协议, 端口)` 的多条监听（双栈）已合并；系统后台套接字
+  （DNS 存根、DHCP、NTP、D-Bus）标 `systemSocket` 并附隔离原因，由插件决定是否单独折叠展示
+- `applications[].kind`：归组轴优先级 **域名 > 容器 > 进程 > 端口**。域名来自 nginx 配置，
+  容器来自 `docker ps`；没有反向代理的机器自然退回容器/进程轴
+- `entrances[]`：只有上游指向**本机回环**（`127.x` / `::1` / `localhost`）的域名才算落到本机服务。
+  上游是集群地址、`upstream` 名或带变量时进 `proxy.external` 并给出成因，**不硬凑成本机服务**
+- `proxy.files === 0` 表示没读到 nginx 配置（未安装 / 当前用户不可读 / 非 Linux），
+  **不表示这台机器没配域名** —— 插件必须把这两种情况分开说，否则用户会以为配置丢了
+
+边界（插件不得越过）：
+
+- 只读。不写远端任何文件，不重启任何服务
+- **不做连通性探测** —— 不会去连这些端口；`entrances[].url` 是否真的可达由用户自己点
+- 协议判不出来时是 `unknown`，插件必须把 `http` / `https` 两个候选都摆出来，不得猜一个
+- 单次采集有超时、输出上限与 session 级节流；同一 session 同时只允许一个请求；宿主校验
+  sessionId 属于当前 renderer 窗口；关闭会话后宿主清理该 session 的扫描状态
+- **nginx 配置原文不离开主进程**：IPC 只回上面那些结论，原文（可能含内部主机名、上游地址、
+  证书路径）不进快照、不落盘。插件不要试图让宿主把原文传出来
+- `entrances[].url` 是**远端配置推来的字符串**。要打开时一律用 `window.ssh.openExternal(url)`
+  交给宿主校验（只放行 http/https、拒绝内嵌凭据），不要自己拼地址、不要绕过宿主直接调系统
+- 该 API 不提供任意命令执行、后台轮询、长期历史或多服务器聚合能力
+
 ### 1.4 样式自由度与宿主 Token
 
 样式采用“固定语义 token + 插件局部实现”的模式:插件可以设计内部信息架构和组件细节，
@@ -359,5 +405,8 @@ definePlugin({
 | 插件 | id | 类型 | 默认状态 | 说明 |
 | --- | --- | --- | --- | --- |
 | 文件传输(SFTP) | `sftp` | 内置(官方) | 启用 | 高性能上传/下载,会话内使用 |
+| 服务入口 | `services` | 内置(官方) | 启用 | 发现远端监听端口,按域名/容器/进程归约成应用与入口;只读内省,不做连通性探测 |
 | 命令手册 | `command-book` | 外部(market,官方) | 不安装 | 终端底部搜索条:100 条常用命令,关键字匹配,点击复制 |
 | MySQL 管理器 | `mysql-manager` | 外部(market,官方) | 不安装 | workspace 工作台；使用官方 Companion Runtime 按需启动 MySQL WebSocket 代理 |
+| 服务器监控 | `server-monitor` | 外部(market,官方) | 不安装 | 当前会话的 CPU/内存/磁盘/网络/运行时间;走 §1.3 指标 API |
+| WSL 终端 | `wsl-terminal` | 外部(market,官方) | 不安装 | 在 MySSH 中打开本地 WSL/Ubuntu 终端(仅 Windows) |

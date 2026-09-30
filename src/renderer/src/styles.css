@@ -3102,6 +3102,507 @@ textarea:focus-visible,
   box-shadow: var(--focus-ring);
 }
 
+/* ---------- 插件:服务入口(端口发现面板) ----------
+ * 布局只做一件事:把「应用卡片」立起来,让首屏是 4 张卡而不是 13 行端口。
+ * 卡片内部的层级按「人先看什么」排:应用名 → 端口 → 地址与动作 → 依据。
+ */
+.services-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+  position: relative;
+}
+
+.services-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.services-head-main h2 {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.services-head-time {
+  margin-left: var(--sp-2);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.services-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-5) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.services-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* 收敛链:四级数字是这一层的核心论据,不能被压成一行小字 */
+.services-chain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+}
+
+.services-chain-steps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.services-chain-step {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.services-chain-arrow {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.services-chain-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.services-chain-cell strong {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.services-chain-cell span {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.services-chain-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.services-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.services-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.services-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.services-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.services-card-title h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.services-kind {
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--overlay-subtle);
+  border: 1px solid var(--border-light);
+}
+
+.services-kind-container {
+  color: var(--accent);
+  border-color: var(--accent-tint-border);
+  background: var(--accent-soft);
+}
+
+.services-kind-domain {
+  color: var(--accent);
+  border-color: var(--accent-tint-border);
+  background: var(--accent-soft-strong);
+}
+
+.services-card-count {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.services-card-detail {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.services-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.services-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: default;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .services-chip:hover {
+    background: var(--overlay-hover);
+    border-color: var(--border-strong);
+  }
+}
+
+/* 选中态用强调色描边而不是填色:端口号本身要保持等宽可读 */
+.services-chip.on {
+  border-color: var(--accent);
+  color: var(--text-bright);
+  background: var(--accent-soft);
+}
+
+/* 需要隧道的端口给一条虚线边,让「这个口要绕一下」在看端口时就成立 */
+.services-chip.tunnel {
+  border-style: dashed;
+}
+
+.services-chip-star {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.services-entrance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+
+.services-entrance-address {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.services-entrance-address code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-bright);
+  word-break: break-all;
+}
+
+.services-tag {
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  border: 1px solid var(--border-light);
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.services-tag.direct {
+  color: var(--accent);
+  border-color: var(--accent-tint-border);
+}
+
+.services-tag.tunnel {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+}
+
+.services-tag.unknown {
+  color: var(--text-dim);
+}
+
+/* 域名入口是这个面板的主路径:填色而不是只描边,一眼看出「这个入口不是 IP」 */
+.services-tag.domain {
+  color: var(--accent);
+  border-color: var(--accent-tint-border);
+  background: var(--accent-soft);
+}
+
+/* 有域名时的「绕过 nginx 直连端口」备选:默认折起,不抢入口的位置。
+   用中性色而不是隧道块的警示色 —— 它是备选,不是异常 */
+.services-alt {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--overlay-subtle);
+}
+
+.services-alt > summary {
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: default;
+  list-style: none;
+}
+
+.services-alt > summary::-webkit-details-marker {
+  display: none;
+}
+
+.services-alt > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  color: var(--text-dim);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.services-alt[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.services-alt[open] > summary {
+  margin-bottom: var(--sp-2);
+}
+
+.services-alt .services-tunnel-line + .services-tunnel-line {
+  margin-top: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .services-alt > summary:hover {
+    color: var(--text);
+  }
+}
+
+.services-entrance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.services-entrance-reason {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.services-tunnel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 26%, transparent);
+}
+
+.services-tunnel-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.services-tunnel-label {
+  font-size: 11px;
+  color: var(--warn);
+  flex-shrink: 0;
+}
+
+.services-tunnel-line code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.services-tunnel-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.services-tunnel-foot span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.services-tunnel-conflict {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--warn);
+}
+
+.services-fold {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.services-fold > summary {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: default;
+  list-style: none;
+}
+
+.services-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.services-fold > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  color: var(--text-dim);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.services-fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .services-fold > summary:hover {
+    color: var(--text);
+  }
+}
+
+.services-fold-list {
+  margin: 0;
+  padding: 0 var(--sp-3) var(--sp-3);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.services-fold-list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.services-fold-list code {
+  font-family: var(--font-mono);
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.services-fold-warn code {
+  color: var(--warn);
+}
+
+.services-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
+}
+
+.services-error strong {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.services-error p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.services-error-hint {
+  color: var(--text-dim) !important;
+}
+
+.services-toast {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-5);
+  transform: translateX(-50%);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-full);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--elevation-popover);
+  font-size: 12px;
+  color: var(--text-bright);
+  pointer-events: none;
+}
+
 /* 动效敏感用户:移除位移类动效,保留颜色过渡 */
 @media (prefers-reduced-motion: reduce) {
   *,
