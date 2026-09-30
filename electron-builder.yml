@@ -10,6 +10,12 @@ artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 mac:
   category: public.app-category.developer-tools
   icon: build/icon.icns
+  # 显式走 ad-hoc 签名。默认行为是「在钥匙串里找不到有效证书就整个跳过签名」,
+  # 不签的产物是裸 linker-signed stub(Sealed Resources=none),与本地构建出来的形状不一致,
+  # 也不满足 arm64 上「应用包应被完整签名」的预期。写在这里而不是命令行,
+  # 是为了让 CI 与本地 make dist 走同一条路。
+  # 有 Developer ID 证书时把它改回 null 或删掉本行即可恢复正式签名。
+  identity: "-"
   target:
     - dmg
     - zip # electron-updater 在 macOS 只认 zip 产物(dmg 仅供手动安装)

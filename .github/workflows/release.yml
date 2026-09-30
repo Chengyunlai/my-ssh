@@ -29,7 +29,8 @@ jobs:
           - os: ubuntu-latest
             target: linux
     env:
-      # CI 上无签名证书:跳过 macOS 代码签名 / notarization
+      # 无 Developer ID 证书:关掉钥匙串搜索,macOS 由 electron-builder.yml 的
+      # mac.identity: "-" 统一走 ad-hoc 签名(不再跳过签名)。
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - name: Checkout
