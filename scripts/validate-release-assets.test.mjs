@@ -67,6 +67,15 @@ describe('release asset validation', () => {
     )
   })
 
+  it('rejects missing or empty TUI artifacts', async () => {
+    const directory = createValidFixture()
+    const artifact = join(directory, `myssh-tui-${version}.tgz`)
+    rmSync(artifact)
+    await expect(validateReleaseAssets(directory, version)).rejects.toThrow('asset set mismatch')
+    writeFileSync(artifact, '')
+    await expect(validateReleaseAssets(directory, version)).rejects.toThrow('1 KiB')
+  })
+
   it('rejects unapproved files', async () => {
     const directory = createValidFixture()
     writeFileSync(join(directory, 'unexpected.txt'), 'not approved')

@@ -16,6 +16,8 @@ make install   # npm ci,基于 package-lock.json 可复现安装
 
 | 命令 | 说明 |
 | --- | --- |
+| `make tui` | 启动 TUI |
+| `make pack-tui` | 构建独立 TUI tgz |
 | `make dev` | 启动开发模式(主进程 / 渲染进程热更新) |
 | `make lint` | Oxc 静态代码检查 |
 | `make test` | Vitest 单元测试 |
@@ -31,14 +33,16 @@ make install   # npm ci,基于 package-lock.json 可复现安装
 
 ```text
 src/
-  main/        # Electron 主进程:窗口、profiles 加密存储、ssh2 / sftp 会话
+  core/        # 无 Electron / DOM 依赖的 Node 核心
+  tui/         # TUI 交互、屏幕状态与加密 vault
+  main/        # Electron 主进程:窗口、IPC、系统存储、插件和更新适配
   preload/     # contextBridge 桥接,向渲染进程暴露 window.ssh API
   renderer/    # React 界面 + xterm.js 终端 + 插件注册表
   shared/      # 主进程与渲染进程共享的类型(两侧均可 import)
 ```
 
-- **进程边界**:渲染进程只能通过 `window.ssh.*`(preload 暴露)访问能力,不得直接接触 Node / 主进程。
-- **大体积逻辑放主进程**:SFTP 传输等重活放 `src/main/`,经 IPC 暴露,避免在渲染进程阻塞 UI。
+- **进程边界**:渲染进程只能通过 `window.ssh.*`(preload 暴露)访问能力,不得直接接触 Node / 主进程，也不得导入 `src/core/` 或 `src/tui/`。
+- **大体积逻辑放主进程**:SSH / SFTP 等重活放 `src/core/`，由 `src/main/` 经 IPC 暴露,避免在渲染进程阻塞 UI。
 - **类型共享**:跨进程类型放 `src/shared/types.ts`,通过 `@shared/*` 别名引入,不要复制粘贴。
 - **插件**:内置插件见 [`docs/PLUGIN.md`](docs/PLUGIN.md),改插件行为前先读;插件注册表在 `src/renderer/src/plugins/`。
 - **UI 动效与设计规范**:见 [`docs/UI.md`](docs/UI.md)。评审 UI 改动须按其中「评审清单」逐项核对。
@@ -106,6 +110,8 @@ Release Notes 中注明。
 ## 安全约定
 
 - 严禁提交任何私钥、密码、`profiles.json` 等敏感数据;`*.log`、`node_modules/`、`out/`、`dist/` 已在 `.gitignore`。
-- 凭据落盘必须走 Electron `safeStorage` 加密,不要自研明文存储。
+- 桌面凭据通过 Electron `safeStorage`；TUI 凭据使用主密码 vault，禁止明文或把解密密钥与凭据一起落盘。
 - 外部插件运行在受限环境,插件只能调用 `window.ssh.*`;新增主进程能力时评估最小暴露面。
 - `npm audit` 报告必须人工审查;CI 阻止 critical 级生产依赖漏洞,较低级别风险进入 Issue 跟踪。
+
+核心示例统一在 `examples/`，先运行 `user_code/`；修改公开 API 时同步示例、架构与实现记录。

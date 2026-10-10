@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "out/tui/types"
+  },
+  "include": ["src/core/**/*.ts", "src/shared/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}

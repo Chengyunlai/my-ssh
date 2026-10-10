@@ -57,6 +57,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Package portable TUI
+        if: matrix.os == 'ubuntu-latest'
+        run: npm pack ./out/tui --pack-destination dist
+
       - name: Rebuild macOS icon assets (100% opaque)
         if: matrix.os == 'macos-latest'
         run: node scripts/prepare-macos-icon.mjs
@@ -77,6 +81,7 @@ jobs:
             dist/*.exe
             dist/*.blockmap
             dist/latest*.yml
+            dist/myssh-tui-*.tgz
 
   publish:
     name: Validate & Publish Release

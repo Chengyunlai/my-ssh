@@ -352,7 +352,6 @@ app.whenReady().then(() => {
     }
     return new Response('forbidden', { status: 403 })
   })
-  ssh.setOnSessionClosed((sessionId) => sftp.closeSftp(sessionId))
   registerIpc()
   createWindow()
 
