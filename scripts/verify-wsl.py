@@ -24,7 +24,7 @@ listing = subprocess.run([wsl, '--list', '--quiet'], capture_output=True, check=
 names = list(dict.fromkeys(name.strip() for name in listing.decode('utf-16-le' if b'\x00' in listing else 'utf-8').replace('\ufeff', '').splitlines() if name.strip()))
 assert distro in names, 'Requested distribution must be present in the real WSL list'
 node = shutil.which(sys.argv[1]) or sys.argv[1]
-command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else [node, str(root / 'out/tui/myssh.cjs'), '--wsl']
+command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else None
 target = root / '.dev' / 'wsl-acceptance'
 target.mkdir(parents=True, exist_ok=True)
 
@@ -53,6 +53,11 @@ if os.environ.get('GITHUB_ACTIONS') == 'true' and len(sys.argv) == 2:
                 (target / (case + '.ansi')).write_bytes(transcript)
                 probe_terminal.close()
 with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
+    if command is None:
+        wrapper = Path(directory, 'cli.cjs')
+        # Some ConPTY hosts don't surface the Node stderr handle; capture CLI errors in its VT transcript.
+        wrapper.write_text("console.error=(...a)=>process.stdout.write('CLI_ERROR '+a.map(String).join(' ')+'\\r\\n');require(" + json.dumps(str(root / 'out/tui/myssh.cjs')) + ");", encoding='utf8')
+        command = [node, str(wrapper), '--wsl']
     environment = {**os.environ, 'MYSSH_TUI_HOME': directory}
     if len(sys.argv) > 2:
         environment['PATH'] = directory
