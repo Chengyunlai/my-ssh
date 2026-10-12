@@ -48,7 +48,8 @@ npm install -g ./dist/myssh-tui-1.4.0.tgz
 myssh
 ```
 
-本次尚未发布 TUI；发布流程已配置为在下一次 Release 附带 `myssh-tui-<版本>.tgz`。
+从 1.4.0 起，Release 工作流会附带 `myssh-tui-<版本>.tgz`。当前发布准备与验收结果见
+[实现记录](docs/implementation/stage-02.md)。
 TUI 的操作、主密码加密存储、编辑器配置与桌面差异见 [docs/TUI.md](docs/TUI.md)。
 外部 React 插件需要单独的 TUI 适配；图片和 Office/PDF 文件下载后由本地应用打开。
 

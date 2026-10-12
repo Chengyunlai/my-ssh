@@ -26,8 +26,8 @@ npm install -g --omit=optional ./myssh-tui-1.4.0.tgz
 myssh
 ```
 
-Release 工作流会附带同一份平台无关 tgz，目前该产物尚未发布。
-目前没有发布 npm 包，不要使用 `npx myssh-tui`；没有在本次变更中上传 Release。
+Release 工作流会附带同一份平台无关 tgz；从对应版本的 Release 下载后安装。
+目前没有发布 npm 包，不要使用 `npx myssh-tui`。
 更新时重新安装新版 tgz；Electron 的自动更新器只管理桌面应用。
 
 ## 操作

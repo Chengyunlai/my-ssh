@@ -7,6 +7,8 @@
   `test(tui): 在三平台验证终端交互与文件操作`（中文、test/tui）。
 - 发布准备：`5881226fdc1c53b782c8ed7d8544694a14d3a52c`，
   `chore(release): 准备 1.4.0 共享核心与终端版本发布`（中文、chore/release）。
+- Windows 宿主修正：`111c4ae119067d473e9d41cab4720087fe1a286b`，
+  `fix(test): 让 ConPTY 提供 Windows 控制台句柄`（中文、fix/test）。
 - 分支：`codex/feat/core-tui`；记录语言中文。
 - 本轮范围：跨平台操作验收及发布准备，未增加外部 React 插件适配。
 - 核心行为和权限边界保持原实现；新增代码只在测试宿主中运行。
@@ -34,10 +36,13 @@ macOS/Linux 使用 Unix PTY。断点：`terminal_process.py::WindowsTerminal` �
 - 本轮本地 PTY：配置 CRUD、编辑器、文件传输/递归删除、多 Shell 中文恢复等通过。
 - `MYSSH_VERIFY_SCREEN=1 node scripts/verify-tui.mjs`：macOS 通过屏幕解析模式操作链，
   与 Windows 共用 VT 差量解释器；这不代替 Windows ConPTY 验证。
-- 新增 Windows ConPTY：等待本轮提交的三平台 CI，尚不能宣称通过。
+- 三平台完整验收：[38199826202](https://github.com/Chengyunlai/my-ssh/actions/runs/38199826202)
+  在 `111c4ae` 上全部通过：lint、类型检查、258 测试、构建、独立 tgz 安装、
+  Unix PTY / Windows ConPTY 配置 CRUD、多 Shell 恢复、SFTP 编辑/传输/递归删除、
+  监控及服务操作链，high/critical 生产依赖审计和统一门禁均通过。
 - Windows 初次交互 [38199454518](https://github.com/Chengyunlai/my-ssh/actions/runs/38199454518)
   发现测试宿主继承 CI 的非终端 stdio；已按 Microsoft node-pty 的启动方式显式设置
-  `STARTF_USESTDHANDLES` / null std handles，交由 ConPTY 提供控制台句柄，等待修正后 CI。
+  `STARTF_USESTDHANDLES` / null std handles，交由 ConPTY 提供控制台句柄；上面的修正后 CI 已通过。
 - `make check`：lint、Node/renderer 类型检查、28 文件 / 258 测试、桌面与 TUI 构建通过。
 - `npm run verify:tui-package`：1.4.0 tgz（约 85 KB）在临时目录脱离仓库安装通过，
   不安装 Electron/React，CJS/ESM/TypeScript 入口、SSH/SFTP 调用及非 TTY 拒绝通过。
@@ -45,9 +50,10 @@ macOS/Linux 使用 Unix PTY。断点：`terminal_process.py::WindowsTerminal` �
 
 ## 发布状态与边界
 
-版本准备为 1.4.0，尚未打 tag、发布或合入。远程保护要求 CI、CODEOWNER 批准和最后推送审批，
-不能以本地测试或管理员权限代替批准。维护者批准后合入主分支并推送 `v1.4.0`，
-Release 工作流生成桌面三平台资产及平台无关 TUI tgz。
+版本准备为 1.4.0，尚未打 tag、发布或合入。远程保护要求 CI、CODEOWNER 批准和最后推送审批。
+当前 PR 作者和 CODEOWNER 同为 `Chengyunlai`，GitHub 不允许作者自审；需要维护者完成符合门禁的
+审批，或明确授权本次管理员合入例外。不修改保护规则，不在未授权时跳过批准。
+合入后推送 `v1.4.0`，Release 工作流生成桌面三平台资产及平台无关 TUI tgz。
 
 仍需 Node.js；外部 React 插件未适配；媒体/Office/PDF 下载后本地查看；桌面 vault 不自动迁移。
 Windows Terminal 的 IME/字体及不同终端的复杂远端应用体验不等于自动测试的验收范围。
