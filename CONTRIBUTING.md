@@ -79,10 +79,12 @@ src/
 4. 涉及插件 / UI 改动,对照 `docs/PLUGIN.md`、`docs/UI.md` 检查。
 5. 推送分支,发起 PR 到 `master`,按模板说明:改了什么、为什么、如何验证、风险与回滚方式。
 6. CI 自动执行 lint、类型检查、单元测试、构建和 critical 级生产依赖审计。
-7. 至少一名 CODEOWNER Review 后合并;推荐 squash merge,合并后删除功能分支。
+7. 当前为单人维护，由维护者在 CI 通过、对话解决后检查 diff 并合并，不要求他人批准或 CODEOWNER Review；推荐 squash merge，合并后删除功能分支。
 
-维护者应在 GitHub 为 `master` 开启分支保护:禁止直接推送,要求 `CI / Lint, Typecheck, Test & Build`
-通过、至少一次批准并要求对话已解决。仓库配置未启用这些规则时,文档约定不能替代远端门禁。
+`master` 保留 PR 合并流程，要求 `CI / Lint, Typecheck, Test & Build` 通过、分支与主线保持最新、
+对话已解决，并禁止强推和删除。单人维护期间，批准数为 0，不强制 CODEOWNER 审核，也不要求
+最后一次推送由他人批准；`.github/CODEOWNERS` 仍保留维护归属。管理员适用范围沿用现有配置。
+以后有第二名维护者参与时，再按团队需要启用审批要求。文档约定不能替代 GitHub 远端门禁。
 
 ## 发布流程(版本迭代)
 

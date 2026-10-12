@@ -50,6 +50,8 @@ macOS/Linux 使用 Unix PTY。断点：`terminal_process.py::WindowsTerminal` �
 
 ## 发布状态与边界
 
+以下记录 1.4.0 发布时的审批规则与授权；现行单人维护规范见 [CONTRIBUTING](../../CONTRIBUTING.md#分支与-pr-流程)。
+
 远程保护要求 CI、CODEOWNER 批准和最后推送审批。当前 PR 作者和 CODEOWNER 同为
 `Chengyunlai`，GitHub 不允许作者自审。用户于 2026-10-12 明确授权仅本次管理员合入并发布
 1.4.0；仓库保护规则保持不变，最终提交仍须通过三平台 CI。
