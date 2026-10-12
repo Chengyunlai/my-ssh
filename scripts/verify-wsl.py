@@ -6,6 +6,7 @@ import subprocess
 import json
 import base64
 import tempfile
+import shutil
 from pathlib import Path
 from terminal_process import TerminalProcess
 
@@ -18,13 +19,14 @@ root = Path(__file__).resolve().parent.parent
 wsl = str(Path(os.environ['SystemRoot']) / 'System32' / 'wsl.exe')
 probe = subprocess.run([wsl, '--distribution', distro, '--exec', '/bin/echo', 'WSL_READY'], capture_output=True, timeout=30)
 assert probe.returncode == 0 and b'WSL_READY' in probe.stdout, 'Real WSL distribution must start'
-command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else [sys.argv[1], str(root / 'out/tui/myssh.cjs'), '--wsl']
+node = shutil.which(sys.argv[1]) or sys.argv[1]
+command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else [node, str(root / 'out/tui/myssh.cjs'), '--wsl']
 with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
     environment = {**os.environ, 'MYSSH_TUI_HOME': directory}
     if len(sys.argv) > 2:
         environment['PATH'] = directory
     terminal = TerminalProcess(command, directory, environment)
-    reader = subprocess.Popen([sys.argv[1], str(root / 'scripts/tui-test-screen.mjs')], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8')
+    reader = subprocess.Popen([node, str(root / 'scripts/tui-test-screen.mjs')], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8')
     output = bytearray()
     position = 0
     screen = ''
