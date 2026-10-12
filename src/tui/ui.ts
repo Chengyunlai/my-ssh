@@ -195,7 +195,7 @@ export class TerminalUI {
   suspend(retainScreen = false): void {
     process.stdin.setRawMode(false)
     process.stdin.pause()
-    process.stdout.write('\x1b[0m\x1b[?25h' + (retainScreen ? '\x1b[H\x1b[2J' : '\x1b[?1049l')))
+    process.stdout.write('\x1b[0m\x1b[?25h' + (retainScreen ? '\x1b[H\x1b[2J' : '\x1b[?1049l'))
   }
 
   resume(retainScreen = false): void {
