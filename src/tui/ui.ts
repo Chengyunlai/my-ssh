@@ -192,16 +192,16 @@ export class TerminalUI {
     finally { cancel() }
   }
 
-  suspend(): void {
+  suspend(retainScreen = false): void {
     process.stdin.setRawMode(false)
     process.stdin.pause()
-    process.stdout.write('\x1b[0m\x1b[?25h\x1b[?1049l')
+    process.stdout.write('\x1b[0m\x1b[?25h' + (retainScreen ? '\x1b[H\x1b[2J' : '\x1b[?1049l')))
   }
 
-  resume(): void {
+  resume(retainScreen = false): void {
     process.stdin.setRawMode(true)
     process.stdin.resume()
-    process.stdout.write('\x1b[?1049h\x1b[?25l')
+    process.stdout.write((retainScreen ? '' : '\x1b[?1049h') + '\x1b[?25l')
   }
 
   dispose(): void { this.suspend() }

@@ -50,9 +50,9 @@ export async function showWsl(ui: TerminalUI, signal?: AbortSignal): Promise<voi
   const interrupt = (): void => {}
   process.on('SIGINT', interrupt)
   try {
-    ui.suspend()
+    ui.suspend(true)
     // Node stops the stdin OS read on the next tick after pause. Let it finish before inheriting the console.
     await new Promise<void>((resolve) => setImmediate(resolve))
     await runWslDistribution(name, signal)
-  } finally { process.off('SIGINT', interrupt); ui.resume() }
+  } finally { process.off('SIGINT', interrupt); ui.resume(true) }
 }
