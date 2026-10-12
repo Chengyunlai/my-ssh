@@ -44,7 +44,7 @@ npm run tui
 
 ```bash
 npm run pack:tui
-npm install -g ./dist/myssh-tui-1.5.0.tgz
+npm install -g ./dist/myssh-tui-1.6.0.tgz
 myssh
 ```
 
@@ -55,6 +55,8 @@ TUI 的操作、主密码加密存储、编辑器配置与桌面差异见 [docs/
 现有 1.4.0 不包含这些新增能力。四个官方插件提供独立终端入口；第三方插件需要声明终端能力，React 页面仍供桌面使用。
 进度见 [Issue #32](https://github.com/Chengyunlai/my-ssh/issues/32)。
 可运行示例见 [stage-03](examples/stage-03-tui-portable/README.md)。
+1.6.0 扩展 DOCX 标题/列表/表格、PPTX 分页、DIB ICO 和 TIFF 多帧；第三方插件开发与验证见
+[stage-05 示例](examples/stage-05-tui-compatibility/README.md)。
 
 | 终端会话 | SFTP 文件管理 |
 | --- | --- |

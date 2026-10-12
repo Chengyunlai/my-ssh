@@ -22,7 +22,7 @@ npm run pack:tui
 使用相同命令安装，不需要 Electron：
 
 ```bash
-npm install -g ./myssh-tui-1.5.0.tgz
+npm install -g ./myssh-tui-1.6.0.tgz
 myssh
 ```
 
@@ -61,11 +61,11 @@ macOS 使用 ad-hoc 签名，仍可能需要在系统中允许下载的程序运
   Windows 来源默认 0644，覆盖保留已有权限与 owner/group；文本超过 5 MiB 只读，预览界面最多显示 64 Ki 字符。
 - 文本编辑读取完整允许范围，调用 `VISUAL` / `EDITOR`，默认 macOS/Linux 为 `vi`、Windows 为
   `notepad.exe`；编辑器退出后确认写回。GUI 编辑器须配置等待参数，例如 `EDITOR="code --wait"`。
-- 图片以 RGB 色块显示；PDF 分页图像和可选文字；DOCX 文字；XLS/XLSX 支持工作表切换。
+- 图片以 RGB 色块显示；PDF 分页图像和可选文字；DOCX 标题/列表/表格；PPTX 按幻灯片顺序分页；XLS/XLSX 支持工作表切换。
   预览完整文件上限 5 MiB、图片 12 MP、Office ZIP 宣告展开量 32 MiB；Worker 的 JS 堆上限 256 MiB，15 秒超时，Ctrl+C 取消。
   图像不播放动画；Office 不保留复杂排版，不执行宏；PDF 不执行文档脚本。
   SVG 外部引用/脚本被拒绝；不支持的编码、HEIC/HEIF、旧版 DOC 和普通二进制仍可下载。
-  支持常见 PNG/JPEG/GIF/WebP/BMP/SVG/AVIF、TIFF 首图和含 PNG 的 ICO；格式变体取决于解码器。
+  支持常见 PNG/JPEG/GIF/WebP/BMP/SVG/AVIF、TIFF 多帧和 PNG/DIB ICO（1/4/8/24/32 位 BI_RGB）；格式变体取决于解码器。
 - 系统监控和服务发现复用桌面版的采集和解析规则。远端 Linux 支持采集；其他远端返回不支持。
 
 ## 数据与边界
@@ -139,3 +139,23 @@ CSV 只导出当前结果，危险公式前缀转为文字；SQL 编辑高亮与
 CSV 面向电子表格查看：对空白/全角公式前缀也做检查，危险字段在引号内增加制表符，
 其它内容保持原值；程序导入时要计入该保护字符。此处理不保证所有表格软件反复保存后的行为，
 依据见 [OWASP CSV Injection](https://community.owasp.org/attacks/CSV_Injection)。
+
+
+## 第三方作者与真实终端验收（1.6.0+）
+
+`myssh --validate-plugin terminal.json` 在无 TTY 环境检查描述，成功输出 `PLUGIN_OK`，失败退出码 1。
+作者可从 `myssh-tui/plugin` 导入 `validateTuiPlugin`，共用 React 插件的业务数据生成终端描述，
+无需编写另一份命令库；[stage-05](../examples/stage-05-tui-compatibility/user_code/README.md) 可运行并安装自己的市场。
+当前合同仍为 commands/monitor/mysql/wsl；其他第三方业务需要提供源码并扩展宿主合同，工具不自动翻译 React UI。
+
+PPTX 只读取包内 presentation 关系指定的幻灯片文字/表格，不读取外链、嵌入对象或宏。
+DOCX 不保证精确的页码、字体或图片排版；XML 实际解压上限 2 MiB/条，禁止 DTD，深度最多 128。
+
+Windows 可直接运行 `myssh --wsl` 验证实际发行版，不需要先安装插件或设置 vault；退出发行版会恢复宿主终端。
+源码验收：设置 `MYSSH_TEST_WSL_DISTRO` 为本机已安装的测试发行版，运行 `python scripts/verify-wsl.py node`。
+脚本不安装或删除本机发行版；CI 使用已启用 WSL1 的 Windows runner，导入独立 Alpine 测试发行版并清理。
+Windows WSL2 和字体/IME 的人工观察不由 ConPTY 的文字断言替代，见 [验收表](TUI-ACCEPTANCE.md)。
+
+`npm run verify:tui-terminal` 使用自己的临时目录与回环 SSH，实际运行 Vim/tmux，验证中文分块输入、
+全屏/返回/恢复；需要 Unix Python 3、vim、tmux，不读取使用者的编辑器配置。
+CI Linux 还在无 Node PATH 的单文件程序上运行同一链路；桌面与 TUI 共用修正后的 OSC/CWD 输出处理。

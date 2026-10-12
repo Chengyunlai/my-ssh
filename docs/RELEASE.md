@@ -111,3 +111,8 @@ Release 的 Linux job 在桌面构建后生成平台无关的 `myssh-tui-<版本
 1.5.0 还需主仓库三平台插件键盘链路与临时 MySQL 8.4 语义测试通过；
 市场仓库的终端入口先经 CI 合入并部署 Pages，回读 registry 的独立终端 hash。
 TUI 单文件验证也要在 PATH 无 Node 环境运行插件安装、数据库/命令/监控链路。
+
+1.6.0 起：Linux 的源码/单文件还运行真实 Vim/tmux；Windows runner 导入固定摘要的独立 WSL1
+发行版，在 ConPTY 中验证源码/单文件交接、中文输出、退出与恢复，并 always 清理该 CI 名称。
+第三方公开合同/CLI 校验与安装在独立 tgz 中验证；DOCX/PPTX/ICO/TIFF 扩展加入三平台预览链。
+WSL2、字体/IME 人工验收与正式签名证书不由这些自动链替代，见 [验收表](TUI-ACCEPTANCE.md)。
