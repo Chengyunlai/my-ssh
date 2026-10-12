@@ -56,13 +56,15 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
     if command is None:
         wrapper = Path(directory, 'cli.cjs')
         # Some ConPTY hosts don't surface the Node stderr handle; capture CLI errors in its VT transcript.
-        wrapper.write_text("console.error=(...a)=>process.stdout.write('CLI_ERROR '+a.map(String).join(' ')+'\\r\\n');require(" + json.dumps(str(root / 'out/tui/myssh.cjs')) + ");", encoding='utf8')
+        entry = Path(os.environ.get('MYSSH_WSL_TEST_ENTRY', root / 'out/tui/myssh.cjs')).resolve()
+        loader = "import(" + json.dumps(entry.as_uri()) + ");" if entry.suffix == '.mjs' else "require(" + json.dumps(str(entry)) + ");"
+        wrapper.write_text("console.error=(...a)=>process.stdout.write('CLI_ERROR '+a.map(String).join(' ')+'\\r\\n');const fail=e=>process.stdout.write('CLI_FATAL '+(e?.stack||e)+'\\r\\n',()=>process.exit(1));process.on('uncaughtException',fail);process.on('unhandledRejection',fail);" + loader, encoding='utf8')
         command = [node, str(wrapper), '--wsl']
     environment = {**os.environ, 'MYSSH_TUI_HOME': directory}
     if len(sys.argv) > 2:
         environment['PATH'] = directory
     terminal = TerminalProcess(command, directory, environment)
-    reader = subprocess.Popen([node, str(root / 'scripts/tui-test-screen.mjs')], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8')
+    reader = subprocess.Popen([node, os.environ.get('MYSSH_SCREEN_READER', str(root / 'scripts/tui-test-screen.mjs'))], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8')
     output = bytearray()
     position = 0
     screen = ''
