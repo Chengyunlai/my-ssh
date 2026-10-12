@@ -6,7 +6,7 @@
   [PR #12](https://github.com/Chengyunlai/my-ssh-plug/pull/12) 已合入，merge `17f872caa131041022e7f7d8540664ea0e959bf1`。
 - 记录语言中文。主仓库实现 C1：`173f305c5b3e9dec41c5d5e35ea10f439c980e32`，
   `feat(tui): 接入终端插件市场与 MySQL 工作台`；C2 不自引用。
-- 状态：本地实现/验证通过；市场已部署；主仓库新增三平台与真实 MySQL CI 待运行，1.5.0 尚未发布。
+- 状态：本地、三平台与真实 MySQL 验收通过，市场已部署；合入/发行状态以 PR #34 与 Release v1.5.0 为准。
 - Example：先 `npm run example:mysql`，见 [user_code](../../examples/stage-04-tui-plugins/user_code/README.md)，
   再看 [Core 映射](../../examples/stage-04-tui-plugins/core/README.md)。
 
@@ -76,3 +76,8 @@ Mermaid 见设计记录，D0，未连接 draw.io；新插件合同与示例导�
 暴露了查询处理遗漏无列结果。已允许空列并添加 wire-protocol DO/OK 回归，修正后重新验收。
 
 CSV 对全角/空白/换行前缀也检查，使用引号内制表符保护电子表格查看；程序导入须保留该格式差异。
+
+修正后的 [CI 38213467766](https://github.com/Chengyunlai/my-ssh/actions/runs/38213467766) 在 `7685cab` 上全部通过：
+三平台 285 测试、独立安装、PTY/ConPTY 与单文件全部交互链，真实 MySQL 8.4 CRUD/SQL 模式/NULL/上限/重连。
+Windows 曾在快速合并的 Arrow+Enter 输入时遗漏编辑器选择；测试改为确认选中状态后再 Enter，以同步实际 ConPTY 屏幕。
+最终交付：[PR #34](https://github.com/Chengyunlai/my-ssh/pull/34) / [Release v1.5.0](https://github.com/Chengyunlai/my-ssh/releases/tag/v1.5.0)。

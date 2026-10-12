@@ -6,7 +6,7 @@
   `feat(tui): 支持终端文件预览与免 Node 单文件分发`；记录 commit（C2）不自引用。
 - Example：[user_code](../../examples/stage-03-tui-portable/user_code/README.md) 优先，
   再读 [核心映射](../../examples/stage-03-tui-portable/core/README.md)。
-- 状态：本地与三平台 CI 通过，已合入 PR #33；尚未发布新的 Release。
+- 状态：本地与三平台 CI 通过，已合入 PR #33；发行归入 [v1.5.0](https://github.com/Chengyunlai/my-ssh/releases/tag/v1.5.0)，实际状态以该 Release 为准。
 
 ## 用户可见结果
 
