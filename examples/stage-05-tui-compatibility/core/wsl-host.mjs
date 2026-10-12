@@ -2,10 +2,11 @@
 import { TerminalUI } from '../../../src/tui/ui.ts'
 import { showWsl } from '../../../src/tui/wsl.ts'
 import fs from 'node:fs'
-import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const ui = new TerminalUI()
-const log = (event) => fs.appendFileSync(path.resolve('.dev/wsl-acceptance/host-events.txt'), JSON.stringify(event) + '\n')
+const logfile = fileURLToPath(new URL('../../../.dev/wsl-acceptance/host-events.txt', import.meta.url))
+const log = (event) => fs.appendFileSync(logfile, JSON.stringify(event) + '\n')
 for (const method of ['busy', 'menu', 'suspend', 'resume', 'dispose']) {
   const original = ui[method].bind(ui)
   ui[method] = (...args) => {
