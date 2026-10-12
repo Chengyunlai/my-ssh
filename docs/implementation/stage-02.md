@@ -9,6 +9,7 @@
   `chore(release): 准备 1.4.0 共享核心与终端版本发布`（中文、chore/release）。
 - 分支：`codex/feat/core-tui`；记录语言中文。
 - 本轮范围：跨平台操作验收及发布准备，未增加外部 React 插件适配。
+- 核心行为和权限边界保持原实现；新增代码只在测试宿主中运行。
 
 ## 可回放入口
 
@@ -34,6 +35,9 @@ macOS/Linux 使用 Unix PTY。断点：`terminal_process.py::WindowsTerminal` �
 - `MYSSH_VERIFY_SCREEN=1 node scripts/verify-tui.mjs`：macOS 通过屏幕解析模式操作链，
   与 Windows 共用 VT 差量解释器；这不代替 Windows ConPTY 验证。
 - 新增 Windows ConPTY：等待本轮提交的三平台 CI，尚不能宣称通过。
+- Windows 初次交互 [38199454518](https://github.com/Chengyunlai/my-ssh/actions/runs/38199454518)
+  发现测试宿主继承 CI 的非终端 stdio；已按 Microsoft node-pty 的启动方式显式设置
+  `STARTF_USESTDHANDLES` / null std handles，交由 ConPTY 提供控制台句柄，等待修正后 CI。
 - `make check`：lint、Node/renderer 类型检查、28 文件 / 258 测试、桌面与 TUI 构建通过。
 - `npm run verify:tui-package`：1.4.0 tgz（约 85 KB）在临时目录脱离仓库安装通过，
   不安装 Electron/React，CJS/ESM/TypeScript 入口、SSH/SFTP 调用及非 TTY 拒绝通过。

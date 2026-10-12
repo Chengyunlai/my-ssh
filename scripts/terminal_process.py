@@ -116,6 +116,9 @@ class WindowsTerminal:
                                                               c.sizeof(w.HANDLE), None, None))
                 startup = StartupEx()
                 startup.startup.cb = c.sizeof(StartupEx)
+                # Clear inherited CI pipe handles so ConPTY supplies console handles.
+                # Microsoft node-pty uses STARTF_USESTDHANDLES with null std handles too.
+                startup.startup.flags = 0x00000100
                 startup.attributes = c.cast(attributes, c.c_void_p)
                 info = ProcessInfo()
                 command_line = c.create_unicode_buffer(subprocess.list2cmdline(command))
