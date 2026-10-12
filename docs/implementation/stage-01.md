@@ -1,5 +1,7 @@
 # 共用 Core 与 TUI 实现记录
 
+本文件保留初始实现的验证范围；后续三平台验收与 1.4.0 发布准备见 [stage-02](stage-02.md)。
+
 - 设计记录：[core-tui](../plans/core-tui.md)，本地设计记录，没有创建外部 Issue。
 - Example：[公共调用入口](../../examples/stage-01-core-tui/user_code/README.md)，`npm run example:core`。
 - 基线：`bbef9c0d5dc7ac9aa05acbaf404e8ff26889f83d`。

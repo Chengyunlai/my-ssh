@@ -7,4 +7,5 @@
 | --- | --- | --- | --- | --- |
 | [stage-01-core-tui](stage-01-core-tui/README.md) | 无 Electron 宿主调用核心 | `npm run example:core` | `CORE_OK 你好` / `Hello SFTP` | [设计](../docs/plans/core-tui.md) / [实现](../docs/implementation/stage-01.md) |
 
-当前阶段未提交；基线与分支记录在实现文档。
+核心实现提交：`bb8cd721ea5e9f092345acbb1d419fe80bcabe7e`。三平台验收与 1.4.0 发布准备
+复用该 Example，见 [stage-02](../docs/implementation/stage-02.md)；关联 [Issue #27](https://github.com/Chengyunlai/my-ssh/issues/27)。

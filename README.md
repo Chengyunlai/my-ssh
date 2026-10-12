@@ -44,7 +44,7 @@ npm run tui
 
 ```bash
 npm run pack:tui
-npm install -g ./dist/myssh-tui-1.3.5.tgz
+npm install -g ./dist/myssh-tui-1.4.0.tgz
 myssh
 ```
 

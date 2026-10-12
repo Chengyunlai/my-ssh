@@ -99,4 +99,5 @@ Release 的 Linux job 在桌面构建后生成平台无关的 `myssh-tui-<版本
 桌面打包排除 `out/tui/`，headless / serialize 在根项目作为开发依赖，不增大桌面运行依赖。
 
 发布前追加：`npm run verify:tui-package` 验证脱离仓库安装，`npm run verify:tui`
-在 macOS/Linux 验证真实 PTY；Windows Terminal 交互仍需人工验收。本次仅修改流程配置，没有发布。
+在 macOS/Linux PTY 与 Windows ConPTY 中验证同一交互链；Windows Terminal 字体与 IME
+体验仍需人工验收。1.4.0 发布准备及审批状态见 [stage-02](implementation/stage-02.md)。

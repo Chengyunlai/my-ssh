@@ -24,7 +24,7 @@ fs.writeFileSync(path.join(output, 'package.json'), JSON.stringify({
   files: ['*.cjs', 'types', 'README.md', 'LICENSE'], engines: pkg.engines,
   dependencies, repository: pkg.repository
 }, null, 2) + '\n')
-fs.writeFileSync(path.join(output, 'README.md'), fs.readFileSync(path.join(root, 'docs/TUI.md'), 'utf8').replaceAll('myssh-tui-1.3.5.tgz', `myssh-tui-${pkg.version}.tgz`))
+fs.writeFileSync(path.join(output, 'README.md'), fs.readFileSync(path.join(root, 'docs/TUI.md'), 'utf8').replace(/myssh-tui-\d+\.\d+\.\d+\.tgz/g, `myssh-tui-${pkg.version}.tgz`))
 fs.copyFileSync(path.join(root, 'LICENSE'), path.join(output, 'LICENSE'))
 fs.chmodSync(path.join(output, 'myssh.cjs'), 0o755)
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true })
