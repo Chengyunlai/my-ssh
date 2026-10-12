@@ -15,7 +15,7 @@ try {
   fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ name: 'myssh-install-fixture', version: '1.0.0', private: true }))
   const npmCli = process.env.npm_execpath
   if (!npmCli) throw new Error('Run with npm run verify:tui-package')
-  await execute(process.execPath, [npmCli, 'install', '--omit=dev', '--omit=optional', '--ignore-scripts', '--no-audit', '--no-fund', tarball], { cwd: directory })
+  await execute(process.execPath, [npmCli, 'install', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', tarball], { cwd: directory })
   assert.equal(fs.existsSync(path.join(directory, 'node_modules/electron')), false)
   assert.equal(fs.existsSync(path.join(directory, 'node_modules/react')), false)
   const binary = path.join(directory, 'node_modules/myssh-tui/myssh.cjs')

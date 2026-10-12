@@ -1,7 +1,7 @@
 # MySSH TUI
 
 在交互式终端中管理 SSH 连接与远程文件，不需要 Electron 或图形桌面。
-运行环境：Node.js `^20.19.0 || >=22.12.0`；Windows 建议 Windows Terminal。
+npm 包运行环境：Node.js 22.13+；单文件程序自带运行时。Windows 建议 Windows Terminal。
 
 ## 本地运行
 
@@ -10,7 +10,7 @@ npm ci
 npm run tui
 ```
 
-仓库开发安装会包含桌面依赖；提供给用户的独立包只包含 TUI、核心和 ssh2 / xterm 的 Node 模块。
+仓库开发安装会包含桌面依赖；独立包包含 TUI、核心、SSH/xterm 与文件预览依赖，不包含 Electron/React。
 
 ## 构建独立安装包
 
@@ -22,13 +22,32 @@ npm run pack:tui
 使用相同命令安装，不需要 Electron：
 
 ```bash
-npm install -g --omit=optional ./myssh-tui-1.4.0.tgz
+npm install -g ./myssh-tui-1.4.0.tgz
 myssh
 ```
 
 Release 工作流会附带同一份平台无关 tgz；从对应版本的 Release 下载后安装。
 目前没有发布 npm 包，不要使用 `npx myssh-tui`。
 更新时重新安装新版 tgz；Electron 的自动更新器只管理桌面应用。
+
+## 免安装单文件程序
+
+`npm run pack:tui-portable` 在 Node 22 LTS 下构建当前平台的程序与 `.sha256`。
+Release 工作流会为下一版本构建 macOS arm64、Windows x64 和 Linux x64 三种程序：
+
+| 平台 | 文件 | 启动 |
+| --- | --- | --- |
+| macOS Apple Silicon | `myssh-tui-<版本>-darwin-arm64` | `chmod +x 文件名` 后 `./文件名` |
+| Linux x64 | `myssh-tui-<版本>-linux-x64` | `chmod +x 文件名` 后 `./文件名` |
+| Windows x64 | `myssh-tui-<版本>-win32-x64.exe` | 在终端中运行 `.\文件名.exe` |
+
+用户无需安装 Node/npm/Electron。程序与 CPU/OS 对应，Linux 需满足 Node 22 的 glibc 2.28+ 要求。
+macOS 使用 ad-hoc 签名，仍可能需要在系统中允许下载的程序运行；没有正式签名/公证。
+程序启动将内嵌应用和依赖解压到随机临时目录（Unix 0700/0600），不把凭据写入该目录；
+退出尝试清理，Windows 锁定的原生模块可能留待系统清理。更新时下载新文件替换旧文件。
+现有 1.4.0 Release 只有 tgz；单文件产物属于后续版本，不能从 1.4.0 下载。
+
+可用 `myssh --preview ./report.pdf` 独立预览本地文件，无需连接服务器或解锁 vault。
 
 ## 操作
 
@@ -42,7 +61,11 @@ Release 工作流会附带同一份平台无关 tgz；从对应版本的 Release
   Windows 来源默认 0644，覆盖保留已有权限与 owner/group；文本超过 5 MiB 只读，预览界面最多显示 64 Ki 字符。
 - 文本编辑读取完整允许范围，调用 `VISUAL` / `EDITOR`，默认 macOS/Linux 为 `vi`、Windows 为
   `notepad.exe`；编辑器退出后确认写回。GUI 编辑器须配置等待参数，例如 `EDITOR="code --wait"`。
-- 图片、PDF、Office、二进制文件下载后由本地应用打开。
+- 图片以 RGB 色块显示；PDF 分页图像和可选文字；DOCX 文字；XLS/XLSX 支持工作表切换。
+  预览完整文件上限 5 MiB、图片 12 MP、Office ZIP 宣告展开量 32 MiB；Worker 的 JS 堆上限 256 MiB，15 秒超时，Ctrl+C 取消。
+  图像不播放动画；Office 不保留复杂排版，不执行宏；PDF 不执行文档脚本。
+  SVG 外部引用/脚本被拒绝；不支持的编码、HEIC/HEIF、旧版 DOC 和普通二进制仍可下载。
+  支持常见 PNG/JPEG/GIF/WebP/BMP/SVG/AVIF、TIFF 首图和含 PNG 的 ICO；格式变体取决于解码器。
 - 系统监控和服务发现复用桌面版的采集和解析规则。远端 Linux 支持采集；其他远端返回不支持。
 
 ## 数据与边界
@@ -80,6 +103,7 @@ TUI 使用独立 `profiles.vault.json`，scrypt 派生密钥、AES-256-GCM 验�
 `npm run verify:tui` 需要 Python 3，使用 macOS/Linux PTY 或 Windows 10 1809+ ConPTY
 自动验证键盘操作、配置 CRUD、多 Shell、文件预览/编辑、上传下载及递归删除。
 验证仅使用本地虚拟 SSH 服务与临时文件。CI 三平台矩阵覆盖构建、独立安装与终端测试，
+`npm run verify:tui-portable` 还会把程序复制出仓库，移除应用 PATH 中的 Node，验证完整 SSH/SFTP 与 PNG/PDF/XLSX/DOCX 预览。
 统一 gate 保留原分支保护检查名称；Windows Terminal 的字体与 IME 体验仍须人工确认。
 Shell 屏幕恢复依赖 xterm SerializeAddon；[上游说明](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-serialize)
 将其标为实验性能力，复杂远端终端应用仍需要跨终端实测。

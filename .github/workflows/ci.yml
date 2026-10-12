@@ -57,6 +57,9 @@ jobs:
       - name: TUI PTY interaction
         run: node scripts/verify-tui.mjs
 
+      - name: Single executable without Node on PATH
+        run: npm run verify:tui-portable
+
       - name: Block high or critical production vulnerabilities
         run: npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
 

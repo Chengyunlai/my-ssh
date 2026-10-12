@@ -9,3 +9,7 @@
 
 核心实现提交：`bb8cd721ea5e9f092345acbb1d419fe80bcabe7e`。三平台验收与 1.4.0 发布准备
 复用该 Example，见 [stage-02](../docs/implementation/stage-02.md)；关联 [Issue #27](https://github.com/Chengyunlai/my-ssh/issues/27)。
+
+[stage-03-tui-portable](stage-03-tui-portable/README.md)：公开 `--preview` 调用、免 Node 单文件分发，
+先运行 `user_code/main.mjs`；设计见 [tui-followup](../docs/plans/tui-followup.md)，
+实现见 [stage-03](../docs/implementation/stage-03.md)。

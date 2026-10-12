@@ -26,11 +26,15 @@ function createValidFixture() {
 
   const payloads = new Map()
   for (const name of expectedReleaseAssets(version)) {
-    if (name.endsWith('.yml')) continue
+    if (name.endsWith('.yml') || name.endsWith('.sha256')) continue
     const size = name.endsWith('.blockmap') ? 128 : 1024 * 1024
     const contents = Buffer.alloc(size, name.charCodeAt(0))
     payloads.set(name, contents)
     writeFileSync(join(directory, name), contents)
+  }
+  for (const name of expectedReleaseAssets(version).filter((name) => name.endsWith('.sha256'))) {
+    const target = name.slice(0, -7)
+    writeFileSync(join(directory, name), `${createHash('sha256').update(payloads.get(target)).digest('hex')}  ${target}\n`)
   }
 
   const metadata = new Map([
@@ -60,6 +64,11 @@ afterEach(() => {
 })
 
 describe('release asset validation', () => {
+  it('rejects a portable binary with an incorrect checksum', async () => {
+    const directory = createValidFixture()
+    writeFileSync(join(directory, `myssh-tui-${version}-linux-x64.sha256`), `${'0'.repeat(64)}  myssh-tui-${version}-linux-x64\n`)
+    await expect(validateReleaseAssets(directory, version)).rejects.toThrow('sha256 does not match')
+  })
   it('accepts the exact asset set with matching update metadata', async () => {
     const directory = createValidFixture()
     await expect(validateReleaseAssets(directory, version)).resolves.toEqual(

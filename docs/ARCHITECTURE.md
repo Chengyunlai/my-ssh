@@ -89,9 +89,18 @@ React 与 `window.ssh.*` API，不能获取 Node 或 Electron 主进程对象。
 
 示例根目录是 [`examples/`](../examples/README.md)，先运行 `npm run example:core`。
 该示例使用回环虚拟 SSH 服务，输出 `CORE_OK 你好` 与 `Hello SFTP`。
-`npm run verify:tui` 在 macOS/Linux 使用真实 PTY 验证菜单与业务链；Windows 需要人工在
-Windows Terminal 验证键盘交互。CI 的三平台矩阵验证类型、测试、构建和独立包。
+`npm run verify:tui` 在 macOS/Linux 使用真实 PTY 验证菜单与业务链；Windows 使用原生 ConPTY 验证相同链路。CI 的三平台矩阵验证类型、测试、构建、独立包和免 Node 程序；字体与 IME 仍须人工验收。
 设计记录见 [`plans/core-tui.md`](plans/core-tui.md)，验证结果见
 [`implementation/stage-01.md`](implementation/stage-01.md)。
 
 抽取决策及后果见 [ADR 0006](adr/0006-shared-core-and-tui.md)。
+
+## 终端文件预览与单文件分发
+
+`src/tui/preview.ts` 启动限时 Worker；`preview-render.ts` 在 Worker 内解析文件，
+`preview-format.ts` 拥有大小、像素、Office ZIP 和 RGB 输出规则。原始文字经 plain 净化，
+ANSI 序列仅由 RGB 整数生成；图像处理库不进入 Core 或 renderer。
+`--preview` 与远程 SFTP 复用该入口。Worker 的堆限制不等同于 OS 对整个进程/原生解码内存的限制。
+`scripts/build-tui-portable.mjs` 安装锁定的精简依赖并嵌入 Node SEA；
+`sea-launcher.cjs` 仅使用 Node 内置模块展开受信的构建资产，再加载 TUI。
+详见 [stage-03 设计](plans/tui-followup.md)。

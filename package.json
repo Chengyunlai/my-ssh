@@ -21,7 +21,9 @@
     "example:core": "npm run build:tui && node examples/stage-01-core-tui/user_code/main.mjs",
     "verify:tui": "npm run build:tui && node scripts/verify-tui.mjs",
     "verify:tui-package": "npm run pack:tui && node scripts/verify-tui-package.mjs",
-    "verify:desktop-core": "npm run build:desktop && electron scripts/verify-desktop-core.cjs"
+    "verify:desktop-core": "npm run build:desktop && electron scripts/verify-desktop-core.cjs",
+    "pack:tui-portable": "npm run build:tui && node scripts/build-tui-portable.mjs",
+    "verify:tui-portable": "npm run pack:tui-portable && node scripts/verify-tui-portable.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -53,18 +55,24 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.11",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/ssh2": "^1.15.5",
+    "@types/utif": "^3.0.6",
     "@vitejs/plugin-react": "^5.2.0",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/headless": "^6.0.0",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "image-size": "^2.0.4",
     "oxlint": "^1.79.0",
+    "pdfjs-dist": "^6.4.299",
+    "postject": "^1.0.0-alpha.6",
     "typescript": "^7.0.2",
+    "utif": "^3.1.0",
     "vite": "^7.3.6",
     "vitest": "^4.1.11"
   },

@@ -23,11 +23,18 @@ export function expectedReleaseAssets(version) {
     'latest-linux.yml',
     'latest-mac.yml',
     'latest.yml',
-    `myssh-tui-${version}.tgz`
+    `myssh-tui-${version}.tgz`,
+    ...['darwin-arm64', 'linux-x64', 'win32-x64.exe'].flatMap((target) => [
+      `myssh-tui-${version}-${target}`, `myssh-tui-${version}-${target}.sha256`
+    ])
   ].sort()
 }
 
 function assertSize(name, size) {
+  if (name.endsWith('.sha256')) {
+    if (size < 64 || size > 1024) throw new Error(`${name} must contain a SHA-256 checksum`)
+    return
+  }
   if (name.endsWith('.yml')) {
     if (size < 1 || size > MEBIBYTE) {
       throw new Error(`${name} must be between 1 byte and 1 MiB`)
@@ -109,6 +116,11 @@ export async function validateReleaseAssets(directory, version) {
       throw new Error(`Release artifact cannot be a symbolic link: ${name}`)
     }
     assertSize(name, statSync(path).size)
+    if (name.endsWith('.sha256')) {
+      const targetName = name.slice(0, -7)
+      const digest = createHash('sha256').update(readFileSync(join(directory, targetName))).digest('hex')
+      if (readFileSync(path, 'utf8').trim() !== `${digest}  ${targetName}`) throw new Error(`${name} sha256 does not match ${targetName}`)
+    }
   }
 
   const metadataTargets = new Map([
