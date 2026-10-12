@@ -23,8 +23,9 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
     downloaded = Path(directory, 'downloaded-fixture.txt')
     terminal = TerminalProcess([node, str(root / 'out/tui/myssh.cjs')], root,
                                {**os.environ, 'MYSSH_TUI_HOME': directory, 'VISUAL': f'"{node}" "{editor}"'})
+    use_screen = os.name == 'nt' or os.environ.get('MYSSH_VERIFY_SCREEN') == '1'
     screen_reader = subprocess.Popen([node, str(root / 'scripts/tui-test-screen.mjs')], cwd=root,
-                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8') if os.name == 'nt' else None
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8') if use_screen else None
     screen = ''
     position = 0
 
@@ -224,8 +225,8 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         destination = root / '.dev' / 'tui-verify'
         destination.mkdir(parents=True, exist_ok=True)
         for name, transcript in marks.items():
-            (destination / f'{name}.ansi').write_text(transcript)
-        (destination / 'result.json').write_text(json.dumps({'steps': list(marks), 'result': 'passed'}, ensure_ascii=False))
+            (destination / f'{name}.ansi').write_text(transcript, encoding='utf-8')
+        (destination / 'result.json').write_text(json.dumps({'steps': list(marks), 'result': 'passed'}, ensure_ascii=False), encoding='utf-8')
     finally:
         terminal.close()
         if screen_reader:
