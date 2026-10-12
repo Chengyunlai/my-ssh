@@ -22,7 +22,7 @@ npm run pack:tui
 使用相同命令安装，不需要 Electron：
 
 ```bash
-npm install -g ./myssh-tui-1.4.0.tgz
+npm install -g ./myssh-tui-1.5.0.tgz
 myssh
 ```
 
