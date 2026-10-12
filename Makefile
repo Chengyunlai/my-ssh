@@ -1,7 +1,7 @@
 # MySSH 开发辅助命令
 # 用法: make <target>   (make help 查看全部)
 
-.PHONY: help install dev lint test typecheck build icon dist clean check release-patch release-minor release-major
+.PHONY: help install dev tui pack-tui lint test typecheck build icon dist clean check release-patch release-minor release-major
 
 help: ## 显示所有可用命令
 	@printf 'MySSH 可用命令:\n\n'
@@ -14,6 +14,12 @@ install: ## 安装依赖(npm ci,基于 lockfile 可复现)
 
 dev: ## 启动开发模式(热更新)
 	npm run dev
+
+tui: ## 启动终端交互版本
+	npm run tui
+
+pack-tui: ## 构建独立 TUI 安装包到 dist/
+	npm run pack:tui
 
 lint: ## 静态代码检查
 	npm run lint

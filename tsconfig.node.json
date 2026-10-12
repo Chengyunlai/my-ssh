@@ -12,5 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "paths": { "@shared/*": ["./src/shared/*"] }
   },
-  "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*"]
+  "include": ["electron.vite.config.ts", "src/main/**/*", "src/core/**/*", "src/tui/**/*", "src/preload/**/*", "src/shared/**/*"]
 }

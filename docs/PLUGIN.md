@@ -410,3 +410,10 @@ definePlugin({
 | MySQL 管理器 | `mysql-manager` | 外部(market,官方) | 不安装 | workspace 工作台；使用官方 Companion Runtime 按需启动 MySQL WebSocket 代理 |
 | 服务器监控 | `server-monitor` | 外部(market,官方) | 不安装 | 当前会话的 CPU/内存/磁盘/网络/运行时间;走 §1.3 指标 API |
 | WSL 终端 | `wsl-terminal` | 外部(market,官方) | 不安装 | 在 MySSH 中打开本地 WSL/Ubuntu 终端(仅 Windows) |
+
+## TUI 与业务核心
+
+抽取 `src/core/` 后，桌面插件仍只调用 `window.ssh.*`；不得直接导入 Core 或 Node。
+现有 React 面板及 Companion Runtime 的加载属于 Electron 宿主，TUI 不加载它们。
+新增 TUI 插件需要独立的终端交互合同，不能把 React bundle 当作终端插件执行。
+内置 SFTP、监控和服务发现由两种界面调用共用核心提供。

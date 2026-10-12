@@ -4,7 +4,7 @@
 
 <h1 align="center">MySSH</h1>
 
-<p align="center">开源桌面 SSH 客户端:可视化管理服务器(账号密码 / PEM 私钥),内置完整桌面终端能力</p>
+<p align="center">开源 SSH 客户端：共用核心，Electron 桌面界面与终端交互界面(TUI)，支持账号密码 / PEM 私钥</p>
 
 <p align="center">
   <img src="https://img.shields.io/github/license/Chengyunlai/my-ssh" alt="License" />
@@ -30,7 +30,36 @@
 
 截图使用本地演示服务生成(虚拟 `/srv/demo-app` 目录),仅用于展示界面,不包含任何真实服务器信息。
 
-## 安装
+## 终端版本(TUI)
+
+同一份 SSH / SFTP 核心现在也可在终端中使用：连接管理、多会话 / 多 Shell、远程文件管理、
+文本预览编辑、系统监控与服务发现。无需 Electron 或图形桌面，运行需要 Node.js。
+
+```bash
+npm ci
+npm run tui
+```
+
+给用户分发时可构建独立安装包（只安装 ssh2 和 xterm Node 模块，不下载 Electron）：
+
+```bash
+npm run pack:tui
+npm install -g ./dist/myssh-tui-1.4.0.tgz
+myssh
+```
+
+从 1.4.0 起，Release 工作流会附带 `myssh-tui-<版本>.tgz`。当前发布准备与验收结果见
+[实现记录](docs/implementation/stage-02.md)。
+TUI 的操作、主密码加密存储、编辑器配置与桌面差异见 [docs/TUI.md](docs/TUI.md)。
+外部 React 插件需要单独的 TUI 适配；图片和 Office/PDF 文件下载后由本地应用打开。
+
+| 终端会话 | SFTP 文件管理 |
+| --- | --- |
+| ![TUI 终端](docs/screenshots/05-tui-shell.png) | ![TUI 文件管理](docs/screenshots/05-tui-sftp.png) |
+
+截图由本地虚拟 SSH 服务的真实 PTY 帧生成，不连接真实服务器。
+
+## 桌面版安装
 
 从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases/latest) 下载对应平台的最新版安装包即可:
 
@@ -72,7 +101,7 @@ open /Applications/MySSH.app
 - [React](https://react.dev) 界面
 - [xterm.js](https://xtermjs.org/)(VS Code 同款终端渲染)+ `@xterm/addon-fit`
 - [ssh2](https://github.com/mscdex/ssh2) 连接协议(密码 / PEM 认证、通道复用)
-- 凭据加密:Electron `safeStorage`(macOS 下走 Keychain),落盘为 `profiles.json`
+- 凭据加密:桌面使用 Electron `safeStorage`；TUI 使用 scrypt + AES-256-GCM 主密码 vault
 - 插件系统:内置插件(随应用分发)+ 外部插件(独立市场仓库 `my-ssh-plug` 分发,可安装 / 更新 / 卸载)
 - UI 动效与设计规范:见 [`docs/UI.md`](docs/UI.md)(基于 emilkowalski/skills 设计工程哲学)
 - 进程边界与关键数据流:见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
@@ -123,13 +152,16 @@ SECURITY.md       # 漏洞报告与安全开发策略
   workflows/ci.yml          # PR / master:lint + typecheck + test + build
   workflows/release.yml     # tag:三平台打包并发布 GitHub Releases
 src/
-  main/        # Electron 主进程:窗口、profiles 加密存储、ssh2 会话
+  core/        # 无 Electron / DOM 依赖的 Node 核心:SSH、SFTP、监控、连接管理
+  tui/         # 终端菜单、Shell 屏幕、编辑器与独立凭据 vault
+  main/        # Electron 主进程:窗口、IPC、系统存储、插件与更新适配
   preload/     # contextBridge 桥接,向渲染进程暴露 window.ssh API
   renderer/    # React 界面 + xterm.js 终端
   shared/      # 主进程与渲染进程共享的类型
   renderer/src/plugins/  # 插件注册表(<id>/index.ts + 面板组件)
 docs/
-  ARCHITECTURE.md  # 进程边界、依赖方向与关键数据流
+  ARCHITECTURE.md  # 宿主 / 核心边界、依赖方向与关键数据流
+  TUI.md       # 终端版本运行、安装与操作说明
   adr/             # 跨模块架构决策记录
   PLUGIN.md    # 插件开发规范
   RELEASE.md   # 发布与自动更新规范
@@ -213,3 +245,12 @@ https://chengyunlai.github.io/my-ssh-plug/registry.json
 - 传输在主进程完成,分块并行窗口(`fastGet`/`fastPut`),避免每块数据经 IPC 往返,本地磁盘直写
 - 下载方向实测受服务器出站带宽限制(~2.8Mbps),客户端方案无差异;上传方向并行窗口已跑满
 - 实时进度(字节/速度)通过 `sftp:progress` 事件推送,失败自动清理本地/远端半成品文件
+
+## 核心与实现示例导航
+
+开发者先读 [AGENTS.md](AGENTS.md) → [架构](docs/ARCHITECTURE.md) →
+[examples 总索引](examples/README.md)，再运行
+[Core 公共 API 示例](examples/stage-01-core-tui/user_code/README.md)。
+阶段目标见 [设计记录](docs/plans/core-tui.md)，实际验证见
+[实现记录](docs/implementation/stage-01.md)。`examples/` 是唯一示例根目录，先看 `user_code/`，
+再按需进入 `core/` 和正式源码。

@@ -2,6 +2,7 @@ import { app, safeStorage } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { Profile } from '@shared/types'
+import { ProfileStore } from '../core/profiles'
 
 interface StoredProfile extends Omit<Profile, 'password' | 'passphrase'> {
   /** base64:优先 safeStorage(Keychain)加密,不可用时退化为明文 base64 */
@@ -47,28 +48,19 @@ function decrypt(value?: string): string | undefined {
   return buf.toString('utf-8')
 }
 
-export function listProfiles(): Profile[] {
-  return readAll().map((p) => ({
-    ...p,
-    password: decrypt(p.password),
-    passphrase: decrypt(p.passphrase)
-  }))
-}
-
-export function saveProfile(profile: Profile): Profile {
-  const list = readAll()
-  const stored: StoredProfile = {
+const store = new ProfileStore({
+  read: () => readAll().map((profile) => ({
+    ...profile,
+    password: decrypt(profile.password),
+    passphrase: decrypt(profile.passphrase)
+  })),
+  write: (profiles) => writeAll(profiles.map((profile) => ({
     ...profile,
     password: encrypt(profile.password),
     passphrase: encrypt(profile.passphrase)
-  }
-  const idx = list.findIndex((p) => p.id === profile.id)
-  if (idx >= 0) list[idx] = stored
-  else list.push(stored)
-  writeAll(list)
-  return profile
-}
+  })))
+})
 
-export function deleteProfile(id: string): void {
-  writeAll(readAll().filter((p) => p.id !== id))
-}
+export function listProfiles(): Profile[] { return store.list() }
+export function saveProfile(profile: Profile): Profile { return store.save(profile) }
+export function deleteProfile(id: string): void { store.delete(id) }

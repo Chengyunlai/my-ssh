@@ -22,7 +22,8 @@ export function expectedReleaseAssets(version) {
     `MySSH-${version}-win-x64.exe.blockmap`,
     'latest-linux.yml',
     'latest-mac.yml',
-    'latest.yml'
+    'latest.yml',
+    `myssh-tui-${version}.tgz`
   ].sort()
 }
 
@@ -31,6 +32,11 @@ function assertSize(name, size) {
     if (size < 1 || size > MEBIBYTE) {
       throw new Error(`${name} must be between 1 byte and 1 MiB`)
     }
+    return
+  }
+
+  if (name.endsWith('.tgz')) {
+    if (size < 1024 || size > 20 * MEBIBYTE) throw new Error(`${name} must be between 1 KiB and 20 MiB`)
     return
   }
 

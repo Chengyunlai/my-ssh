@@ -5,6 +5,7 @@ directories:
   buildResources: build
 files:
   - out/**
+  - "!out/tui/**"
   - package.json
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 mac:

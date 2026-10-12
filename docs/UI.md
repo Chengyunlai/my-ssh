@@ -252,3 +252,16 @@
 | 无 `prefers-reduced-motion` | 全局降级块 | 动效敏感用户可关闭位移 |
 | `.slider` 默认缓动 | `--ease-out` 自定义曲线 | 内置缓动缺乏力度 |
 | 无 `color-scheme: dark` | `:root { color-scheme: dark }` | 原生控件随暗色主题渲染 |
+
+## TUI 交互验收
+
+TUI 使用 ANSI 终端能力，键盘操作无动画。远端文件名和文本预览必须移除控制字符；只有 Shell
+输出按终端协议解释。密码只显示掩码；菜单有可见选中行、分页、搜索与返回提示。
+实际 PTY 帧截图见 `docs/screenshots/05-tui-*.png`，使用本地虚拟 SSH / SFTP 服务。
+
+| Before | After | Why |
+| --- | --- | --- |
+| 只有桌面界面 | 终端菜单、连接表单、SFTP 列表和会话工作区 | 无需图形桌面即可完成内置操作 |
+| 切换界面依赖 xterm DOM | 每 Shell 有 headless framebuffer | 菜单期间继续接收输出，切回恢复屏幕 |
+| 远端文本可包含控制序列 | 菜单和文本预览移除控制字符 | 防止文件名改变界面或触发终端命令 |
+| 没有终端密码输入 | 掩码输入与独立加密 vault | 凭据不会出现在界面或明文文件 |

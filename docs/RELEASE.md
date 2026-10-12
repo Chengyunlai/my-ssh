@@ -5,7 +5,7 @@
 
 CI 中 macOS、Windows、Linux 只并行构建并上传 Actions artifact；全部完成后由唯一的 publish job
 汇总并校验必需资产，再创建或更新 GitHub Release。发布 job 在 tag 推送与手动触发之间共用发布锁；
-资产校验要求精确的 10 文件集合、常规文件类型、合理大小，并核对 `latest*.yml` 引用资产的
+资产校验要求精确的 11 文件集合（含独立 TUI tgz）、常规文件类型、合理大小，并核对 `latest*.yml` 引用资产的
 版本、SHA-512 与大小。禁止矩阵 job 分别执行 `--publish always`，否则可能为同一 tag 创建多个
 Release 并把平台产物拆散。
 
@@ -89,3 +89,15 @@ MYSSH_UPDATE_URL=https://your-server.com/myssh/dist npm run dist
 - [ ] 已发布到 GitHub Releases(或自定义源),且 `latest*.yml` 与安装包同目录
 - [ ] macOS 正式版已 Developer ID 签名
 - [ ] 在旧版本上点「检查更新」能发现并完成升级
+
+## 终端版本的分发
+
+Release 的 Linux job 在桌面构建后生成平台无关的 `myssh-tui-<版本>.tgz`，与桌面安装包一起
+交给唯一 publish job。资产校验要求该文件存在、为常规文件且大小在 1 KiB–20 MiB。
+实际安装需要 Node.js，使用 `npm install -g ./myssh-tui-<版本>.tgz`，之后运行 `myssh`。
+独立包包含 Core 公共 API 和声明文件，仅依赖 ssh2、headless xterm、序列化 addon。
+桌面打包排除 `out/tui/`，headless / serialize 在根项目作为开发依赖，不增大桌面运行依赖。
+
+发布前追加：`npm run verify:tui-package` 验证脱离仓库安装，`npm run verify:tui`
+在 macOS/Linux PTY 与 Windows ConPTY 中验证同一交互链；Windows Terminal 字体与 IME
+体验仍需人工验收。1.4.0 发布准备及审批状态见 [stage-02](implementation/stage-02.md)。

@@ -23,14 +23,16 @@
 
 | 路径 | 职责 | 约束 |
 | --- | --- | --- |
-| `src/main/` | Electron 主进程、SSH/SFTP、存储、更新 | 文件系统、网络、凭据等高权限能力只能放这里 |
+| `src/core/` | Node 业务核心：SSH/SFTP、监控、服务发现、连接管理规则 | 不依赖 Electron、DOM、renderer；仅可信 Node 宿主可调用 |
+| `src/tui/` | 终端交互、屏幕状态、本地编辑器、加密 vault | 通过 Core 调用业务能力；不加载 React 外部插件 |
+| `src/main/` | Electron 主进程、IPC、系统存储、插件、更新 | 桌面高权限能力在此组合与适配，业务能力调用 Core |
 | `src/preload/` | IPC 与 `contextBridge` 边界 | 只暴露最小、类型化 API，不透传 Node 能力 |
 | `src/renderer/` | React UI、终端与插件界面 | 只能通过 `window.ssh.*` 使用主进程能力 |
 | `src/shared/` | 跨进程类型和纯逻辑 | 不依赖 Electron、DOM 或具体进程实现 |
 | `src/renderer/src/plugins/` | 内置插件 | 遵循 `docs/PLUGIN.md`，保持宿主 API 边界 |
 
 跨边界修改必须同步更新 `src/shared/types.ts`、preload 实现和相关调用方。不要复制跨进程类型，
-不要让 renderer 直接导入 `src/main/`。
+不要让 renderer 直接导入 `src/main/`、`src/core/` 或 `src/tui/`。
 
 ## 实现与验证
 
@@ -54,3 +56,10 @@
 - 用户可见行为、架构边界或发布方式变化时，相应文档已同步。
 - 没有包含密钥、凭据、真实服务器信息或本地生成产物。
 - `git diff` 已自查，且未混入其他开发者的修改。
+
+## 核心示例导航
+
+`docs/ARCHITECTURE.md` 是稳定上下文入口；开始时再读 `examples/README.md` 及相关实现记录。
+所有示例放在唯一根目录 `examples/`，先运行 `user_code/`，再读 `core/` 的源码映射。
+公开 API、目录或调用路径变化时同步 README、示例索引与 `docs/implementation/`。
+断点以当前源码符号为准，勿依赖旧行号。未授权提交时记录分支、基线 SHA 和未提交状态。
