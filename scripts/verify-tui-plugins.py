@@ -77,7 +77,7 @@ with tempfile.TemporaryDirectory(prefix='myssh plugins verify ') as directory:
         choose('打开 ·')
 
     try:
-        expect('设置主密码')
+        expect('设置主密码', timeout=30)
         send('fixture-master\r')
         expect('再次输入主密码')
         send('fixture-master\r')
