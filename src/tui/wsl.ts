@@ -46,11 +46,13 @@ export async function showWsl(ui: TerminalUI, signal?: AbortSignal): Promise<voi
   if (!names.length) { await ui.view('WSL', '尚未安装 WSL 发行版，请先在 Windows 中安装。'); return }
   const name = await ui.menu('WSL · 输入 exit 返回 MySSH', names.map((name) => ({ label: name, value: name })))
   if (!name) return
-  ui.suspend()
   // Console Ctrl+C is delivered to the inherited WSL console; keep the waiting host alive.
   const interrupt = (): void => {}
   process.on('SIGINT', interrupt)
   try {
+    ui.suspend()
+    // Node stops the stdin OS read on the next tick after pause. Let it finish before inheriting the console.
+    await new Promise<void>((resolve) => setImmediate(resolve))
     await runWslDistribution(name, signal)
   } finally { process.off('SIGINT', interrupt); ui.resume() }
 }

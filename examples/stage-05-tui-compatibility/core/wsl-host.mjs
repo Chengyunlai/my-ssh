@@ -3,10 +3,21 @@ import { TerminalUI } from '../../../src/tui/ui.ts'
 import { showWsl } from '../../../src/tui/wsl.ts'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import childProcess from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
 
 const ui = new TerminalUI()
 const logfile = fileURLToPath(new URL('../../../.dev/wsl-acceptance/host-events.txt', import.meta.url))
 const log = (event) => fs.appendFileSync(logfile, JSON.stringify(event) + '\n')
+const originalSpawn = childProcess.spawn
+childProcess.spawn = (...args) => {
+  log({ child: 'spawn', command: args[0], args: args[1] })
+  const child = originalSpawn(...args)
+  child.once('error', (error) => log({ child: 'error', error: String(error) }))
+  child.once('close', (code, signal) => log({ child: 'close', code, signal }))
+  return child
+}
+syncBuiltinESMExports()
 for (const method of ['busy', 'menu', 'suspend', 'resume', 'dispose']) {
   const original = ui[method].bind(ui)
   ui[method] = (...args) => {
