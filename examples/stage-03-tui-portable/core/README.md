@@ -10,3 +10,5 @@
 
 单文件启动路径：`scripts/sea-launcher.cjs` 的 entries 展开 → createRequire → 相同 main。
 预览依赖属于终端宿主，Core 不依赖 Canvas、DOM 或这些解析器。
+
+实现基线 C1：`37e64dd4d6ccb898449dc309d96357f45e05beea`；设计/实现记录通过上级 README 导航。

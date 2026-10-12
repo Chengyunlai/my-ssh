@@ -7,3 +7,5 @@
 `src/tui/preview.ts::showPreview`；Worker 的输入包含 bytes、page、columns、rows。
 免 Node 验证入口 `npm run verify:tui-portable` 会移除应用 PATH 的 node/npm，验证实际程序，
 而不是把示例驱动脚本是否依赖 Node 当作免 Node 证据。
+
+实现基线 C1：`37e64dd4d6ccb898449dc309d96357f45e05beea`；设计/实现记录通过上级 README 导航。
