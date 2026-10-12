@@ -21,7 +21,7 @@ wsl = str(Path(os.environ['SystemRoot']) / 'System32' / 'wsl.exe')
 probe = subprocess.run([wsl, '--distribution', distro, '--exec', '/bin/echo', 'WSL_READY'], capture_output=True, timeout=30)
 assert probe.returncode == 0 and b'WSL_READY' in probe.stdout, 'Real WSL distribution must start'
 listing = subprocess.run([wsl, '--list', '--quiet'], capture_output=True, check=True, timeout=30).stdout
-names = list(dict.fromkeys(name.strip() for name in listing.decode('utf16le' if b'\x00' in listing else 'utf8').replace('\ufeff', '').splitlines() if name.strip()))
+names = list(dict.fromkeys(name.strip() for name in listing.decode('utf-16-le' if b'\x00' in listing else 'utf-8').replace('\ufeff', '').splitlines() if name.strip()))
 assert distro in names, 'Requested distribution must be present in the real WSL list'
 node = shutil.which(sys.argv[1]) or sys.argv[1]
 command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else [node, str(root / 'out/tui/myssh.cjs'), '--wsl']
