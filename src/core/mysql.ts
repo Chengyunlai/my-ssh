@@ -73,7 +73,10 @@ export class MysqlSession {
       this.pending = finish
       const timer = setTimeout(() => { finish(new Error('SQL 超过 15 秒，已关闭连接；服务器上的执行结果可能尚未确认')); this.close() }, 15000)
       const query = this.connection.query(sql)
-      query.on('fields', (fields: FieldPacket[]) => { result.columns = fields.slice(0, 100).map((field) => field.name); if (fields.length > 100) result.limited = true })
+      query.on('fields', (fields: FieldPacket[] | undefined) => {
+        result.columns = (fields || []).slice(0, 100).map((field) => field.name)
+        if (fields && fields.length > 100) result.limited = true
+      })
       const stream = query.stream({ highWaterMark: 16 })
       stream.on('data', (row: unknown) => {
         if (settled) return

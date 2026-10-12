@@ -18,6 +18,7 @@ describe('trusted Node MySQL core', () => {
       session = await MysqlSession.connect(fixture.profile)
       expect((await session.query('SELECT fixture')).rows).toEqual([['MYSQL_OK 你好']])
       expect((await session.query('SHOW DATABASES')).columns).toEqual(['Database'])
+      expect(await session.query('DO fixture')).toMatchObject({ columns: [], rows: [], affectedRows: 0 })
       await expect(session.query('DROP DATABASE real')).rejects.toThrow('declared demo queries')
       expect((await session.query('SELECT fixture')).rows).toHaveLength(1)
     } finally { session?.close(); await fixture.close() }

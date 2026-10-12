@@ -49,6 +49,7 @@ export async function startMysqlFixture() {
       else if ((sql === 'SELECT fixture' || sql === "SELECT 'MYSQL_OK 你好' AS message")) rows(['message'], [['MYSQL_OK 你好']])
       else if (sql === 'SELECT many') rows(['message'], Array.from({ length: 1100 }, (_, i) => [`ROW${i}`]))
       else if (sql === 'SELECT long') rows(['message'], [['x'.repeat(100000)]])
+      else if (sql === 'DO fixture') { connection.sequenceId = 1; connection.writeOk({ affectedRows: 0, statusFlags: 2 }) }
       else if (sql.startsWith('SELECT * FROM `demo`.`items`')) rows(['id', 'message'], tableRows.slice(Number(sql.match(/OFFSET (\d+)/)?.[1] || 0), Number(sql.match(/OFFSET (\d+)/)?.[1] || 0) + 100))
       else { connection.sequenceId = 1; connection.writeError({ message: 'Fixture accepts only declared demo queries', code: 1064 }) }
     })

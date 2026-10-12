@@ -70,3 +70,7 @@ TuiApp.commands、showLiveMonitor。MySQL packet writer 只在合成服务中，
 未发布前不能把本地单文件称为公开 Release。第三方 React 页面仍需终端入口；
 复杂 Office 排版、HEIC/HEIF、无 PNG 的 ICO 等编码保留下载途径，字体/IME/复杂远端应用仍需真实终端体验验收。
 Mermaid 见设计记录，D0，未连接 draw.io；新插件合同与示例导航已同步。
+
+首次主仓库 [CI 38211693754](https://github.com/Chengyunlai/my-ssh/actions/runs/38211693754)：
+三平台全部键盘/独立包/单文件链路通过；真实 MySQL 的建库返回 OK 状态包，驱动 fields 为 undefined，
+暴露了查询处理遗漏无列结果。已允许空列并添加 wire-protocol DO/OK 回归，修正后重新验收。
