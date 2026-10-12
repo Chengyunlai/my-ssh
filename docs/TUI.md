@@ -22,7 +22,7 @@ npm run pack:tui
 使用相同命令安装，不需要 Electron：
 
 ```bash
-npm install -g --omit=optional ./myssh-tui-1.3.5.tgz
+npm install -g --omit=optional ./myssh-tui-1.4.0.tgz
 myssh
 ```
 
@@ -77,8 +77,10 @@ TUI 使用独立 `profiles.vault.json`，scrypt 派生密钥、AES-256-GCM 验�
 
 `make check` 包括桌面与 TUI 构建。`npm run example:core` 验证独立公共 API；
 `npm run verify:tui-package` 在临时目录安装 tgz 并验证真实 SSH/SFTP 调用；
-`npm run verify:tui` 需要 Unix PTY 和 Python 3，自动验证键盘操作（Windows 在终端中人工验证）。
-CI 三平台矩阵覆盖构建与独立安装，Unix job 还执行 PTY 测试，统一 gate 保留原分支保护检查名称。
+`npm run verify:tui` 需要 Python 3，使用 macOS/Linux PTY 或 Windows 10 1809+ ConPTY
+自动验证键盘操作、配置 CRUD、多 Shell、文件预览/编辑、上传下载及递归删除。
+验证仅使用本地虚拟 SSH 服务与临时文件。CI 三平台矩阵覆盖构建、独立安装与终端测试，
+统一 gate 保留原分支保护检查名称；Windows Terminal 的字体与 IME 体验仍须人工确认。
 Shell 屏幕恢复依赖 xterm SerializeAddon；[上游说明](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-serialize)
 将其标为实验性能力，复杂远端终端应用仍需要跨终端实测。
 

@@ -55,7 +55,6 @@ jobs:
         run: npm run verify:tui-package
 
       - name: TUI PTY interaction
-        if: matrix.os != 'windows-latest'
         run: node scripts/verify-tui.mjs
 
       - name: Block high or critical production vulnerabilities
