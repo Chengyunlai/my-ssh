@@ -7,6 +7,11 @@ for await (const line of createInterface({ input: process.stdin, crlfDelay: Infi
   await new Promise((resolve) => terminal.write(Buffer.from(line, 'base64'), resolve))
   const buffer = terminal.buffer.active
   const lines = Array.from({ length: terminal.rows }, (_, i) => buffer.getLine(buffer.viewportY + i)?.translateToString(true) || '')
-  process.stdout.write(JSON.stringify(lines.join('\n')) + '\n')
+  const text = lines.join('\n')
+  const coloredBlock = lines.some((_line, y) => Array.from({ length: terminal.cols }, (_, x) => {
+    const cell = buffer.getLine(buffer.viewportY + y)?.getCell(x)
+    return cell?.getChars() === '▀' && cell.isFgRGB()
+  }).some(Boolean))
+  process.stdout.write(JSON.stringify(process.argv.includes('--colors') ? { text, coloredBlock } : text) + '\n')
 }
 terminal.dispose()

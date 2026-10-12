@@ -21,8 +21,11 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
     upload = Path(directory, 'upload-fixture.txt')
     upload.write_text('Portable transfer fixture\n', encoding='utf-8')
     downloaded = Path(directory, 'downloaded-fixture.txt')
-    terminal = TerminalProcess([node, str(root / 'out/tui/myssh.cjs')], root,
-                               {**os.environ, 'MYSSH_TUI_HOME': directory, 'VISUAL': f'"{node}" "{editor}"'})
+    command = [sys.argv[3]] if len(sys.argv) > 3 else [node, str(root / 'out/tui/myssh.cjs')]
+    app_env = {**os.environ, 'MYSSH_TUI_HOME': directory, 'VISUAL': f'"{node}" "{editor}"'}
+    if len(sys.argv) > 3:
+        app_env['PATH'] = directory  # no node/npm in the application environment
+    terminal = TerminalProcess(command, directory if len(sys.argv) > 3 else root, app_env)
     use_screen = os.name == 'nt' or os.environ.get('MYSSH_VERIFY_SCREEN') == '1'
     screen_reader = subprocess.Popen([node, str(root / 'scripts/tui-test-screen.mjs')], cwd=root,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, encoding='utf-8') if use_screen else None
@@ -134,7 +137,7 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         expect('hello.txt')
         frame('sftp')
         send('\x1b[B' * 4 + '\r')
-        expect('文本预览 / 编辑')
+        expect('文件预览 / 文本编辑')
         send('\r')
         expect('Hello SFTP')
         send('\r')
@@ -145,7 +148,7 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         expect('SFTP · /home/demo')
         expect('hello.txt')
         send('/hello.txt\r')
-        expect('文本预览 / 编辑')
+        expect('文件预览 / 文本编辑')
         send('\r')
         expect('Edited via terminal fixture')
         send('\r')

@@ -8,6 +8,7 @@ import { ShellScreens, type ShellScreen } from './shells'
 import { editText } from './editor'
 import { localPath } from './paths'
 import { showServices } from './services'
+import { showPreview } from './preview'
 
 interface Connection { sessionId: string; profile: Profile; error?: string; closed: boolean }
 
@@ -270,7 +271,7 @@ export class TuiApp {
           const action = await this.ui.menu(entry.name, entry.type === 'dir' ? [
             { label: '进入目录', value: 'enter' }, { label: '删除目录（包含全部内容）', value: 'delete' }
           ] : [
-            { label: '文本预览 / 编辑', value: 'read' }, { label: '下载文件', value: 'download' }, { label: '删除文件', value: 'delete' }
+            { label: '文件预览 / 文本编辑', value: 'read' }, { label: '下载文件', value: 'download' }, { label: '删除文件', value: 'delete' }
           ])
           if (action === 'enter') directory = remote
           if (action === 'delete' && await this.ui.confirm(`永久删除远端 ${remote}${entry.type === 'dir' ? ' 及全部内容' : ''}？`)) await this.ui.busy('删除远端内容', this.core.sftp.remove(id, remote, entry.type === 'dir'))
@@ -287,7 +288,13 @@ export class TuiApp {
 
   private async preview(id: string, remote: string): Promise<void> {
     const result = await this.ui.busy('读取远端文件', this.core.sftp.read(id, remote))
-    if (result.kind !== 'text') { await this.ui.view('文件预览', `${result.kind} 文件（${result.size} 字节），请下载后用本地应用打开。`); return }
+    if (result.kind !== 'text') {
+      if (result.truncated) throw new Error('文件超过预览上限，不能解析截断内容；请下载完整文件')
+      if (result.kind === 'binary') { await this.ui.view('文件预览', `二进制文件（${result.size} 字节），请下载后用本地应用打开。`); return }
+      const bytes = result.bytes || Buffer.from(result.dataUrl!.slice(result.dataUrl!.indexOf(',') + 1), 'base64')
+      await showPreview(this.ui, bytes, remote)
+      return
+    }
     const content = result.content || ''
     const display = content.slice(0, 65536)
     await this.ui.view(remote, display + (content.length > display.length || result.truncated ? '\n…预览已截断' : ''))

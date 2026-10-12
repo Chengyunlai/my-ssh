@@ -21,6 +21,9 @@ tui: ## 启动终端交互版本
 pack-tui: ## 构建独立 TUI 安装包到 dist/
 	npm run pack:tui
 
+pack-tui-portable: ## 构建当前平台的免 Node 单文件程序（Node 22 LTS）
+	npm run pack:tui-portable
+
 lint: ## 静态代码检查
 	npm run lint
 
