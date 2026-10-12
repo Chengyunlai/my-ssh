@@ -1,6 +1,6 @@
 {
   "name": "my-ssh",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "开源桌面 SSH 客户端:账户密码 / PEM 私钥配置,内置桌面终端",
   "main": "out/main/index.js",
   "license": "MIT",
@@ -23,7 +23,9 @@
     "verify:tui-package": "npm run pack:tui && node scripts/verify-tui-package.mjs",
     "verify:desktop-core": "npm run build:desktop && electron scripts/verify-desktop-core.cjs",
     "pack:tui-portable": "npm run build:tui && node scripts/build-tui-portable.mjs",
-    "verify:tui-portable": "npm run pack:tui-portable && node scripts/verify-tui-portable.mjs"
+    "verify:tui-portable": "npm run pack:tui-portable && node scripts/verify-tui-portable.mjs",
+    "example:mysql": "npm run build:tui && node scripts/run-mysql-example.mjs",
+    "verify:tui-plugins": "npm run build:tui && node scripts/verify-tui-plugins.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -68,10 +70,12 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "image-size": "^2.0.4",
+    "mysql2": "^3.24.5",
     "oxlint": "^1.79.0",
     "pdfjs-dist": "^6.4.299",
     "postject": "^1.0.0-alpha.6",
     "typescript": "^7.0.2",
+    "undici": "^7.30.0",
     "utif": "^3.1.0",
     "vite": "^7.3.6",
     "vitest": "^4.1.11"

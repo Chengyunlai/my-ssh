@@ -6,7 +6,7 @@
   `feat(tui): 支持终端文件预览与免 Node 单文件分发`；记录 commit（C2）不自引用。
 - Example：[user_code](../../examples/stage-03-tui-portable/user_code/README.md) 优先，
   再读 [核心映射](../../examples/stage-03-tui-portable/core/README.md)。
-- 状态：本地实现/验证通过，三平台新增 CI 待运行；尚未发布新的 Release。
+- 状态：本地与三平台 CI 通过，已合入 PR #33；发行归入 [v1.5.0](https://github.com/Chengyunlai/my-ssh/releases/tag/v1.5.0)，实际状态以该 Release 为准。
 
 ## 用户可见结果
 
@@ -67,4 +67,5 @@ colorBlocks 的 lines、sea-launcher 的 entries。Mermaid 图见设计记录，
 
 首次三平台运行 [38206344205](https://github.com/Chengyunlai/my-ssh/actions/runs/38206344205)：
 Linux/macOS 全链通过，Windows 发现 PDF.js 要求资源目录以 `/` 结尾，原 `path.sep` 为反斜杠。
-已归一化为 Node filesystem 支持的正斜杠路径，补充 Windows/Unix 路径回归测试；修正后 CI 待复验。
+已归一化为 Node filesystem 支持的正斜杠路径，补充 Windows/Unix 路径回归测试；修正后 [38206754774](https://github.com/Chengyunlai/my-ssh/actions/runs/38206754774) 全部通过。
+合入 [PR #33](https://github.com/Chengyunlai/my-ssh/pull/33)，merge `a4e0dcaac108bfb0f4ce5855df5e0d8a291acf62`。

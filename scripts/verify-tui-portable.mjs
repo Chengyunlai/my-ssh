@@ -37,5 +37,10 @@ try {
       child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`Portable PTY verification exited ${code}`)))
     })
   } finally { await fixture.close() }
+  await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['scripts/verify-tui-plugins.mjs', binary], { stdio: 'inherit' })
+    child.once('error', reject)
+    child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`Standalone plugin verification exited ${code}`)))
+  })
   console.log('Standalone executable verified with no node/npm on PATH, outside the source checkout.')
 } finally { fs.rmSync(directory, { recursive: true, force: true }) }

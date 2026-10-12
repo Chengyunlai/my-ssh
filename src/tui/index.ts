@@ -4,14 +4,28 @@ import { TerminalUI, ExitRequested } from './ui'
 import fs from 'node:fs'
 import { showPreview } from './preview'
 import { PREVIEW_LIMITS } from './preview-format'
+import path from 'node:path'
+import { dataDirectory } from './vault'
+import { TerminalPluginMarket, OFFICIAL_REGISTRY } from './plugin-market'
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
   if (args.includes('--help') || args.includes('-h')) {
-    console.log('MySSH TUI\n\n用法：myssh [--help] [--version] [--preview <文件>]\n\n↑↓ / j k 选择 · Enter 确认 · Esc 返回 · / 搜索\nSSH 终端：Ctrl+] 返回菜单，Ctrl+C 发送到远端\n凭据：首次启动设置主密码；MYSSH_TUI_HOME 可指定独立数据目录\n编辑器：VISUAL / EDITOR（默认 macOS/Linux vi，Windows notepad.exe）')
+    console.log('MySSH TUI\n\n用法：myssh [--help] [--version] [--preview <文件>]\n      myssh --install-plugin <id> [--registry <URL>]\n\n↑↓ / j k 选择 · Enter 确认 · Esc 返回 · / 搜索\nSSH 终端：Ctrl+] 返回菜单，Ctrl+C 发送到远端\n凭据：首次启动设置主密码；MYSSH_TUI_HOME 可指定独立数据目录\n编辑器：VISUAL / EDITOR（默认 macOS/Linux vi，Windows notepad.exe）\n插件：安装后默认停用，在终端界面中启用；支持 HTTP(S)_PROXY / NO_PROXY')
     return
   }
   if (args.includes('--version')) { console.log(__MYSSH_VERSION__); return }
+  if (args[0] === '--install-plugin' && args[1] && (args.length === 2 || args.length === 4 && args[2] === '--registry')) {
+    const market = new TerminalPluginMarket(path.join(dataDirectory(), 'plugins'), __MYSSH_VERSION__)
+    const stopDownload = (): void => market.dispose()
+    process.once('SIGINT', stopDownload)
+    process.once('SIGTERM', stopDownload)
+    try {
+      await market.install(args[3] || OFFICIAL_REGISTRY, args[1])
+      console.log(`已安装 ${args[1]}，可在终端插件界面中启用。`)
+    } finally { market.dispose(); process.off('SIGINT', stopDownload); process.off('SIGTERM', stopDownload) }
+    return
+  }
   const previewFile = args.length === 2 && args[0] === '--preview' ? args[1] : undefined
   if (args.length && !previewFile) throw new Error(`未知参数：${args.join(' ')}，使用 --help 查看帮助`)
   if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('MySSH TUI 需要交互式终端；请在 Windows Terminal、Terminal 或其他终端中运行')

@@ -36,3 +36,20 @@ flowchart TB
 
 stage-04 仍是本需求的一部分：终端插件合同、官方插件适配和市场入口。
 React DOM 插件需要另一个终端入口，不能将未适配项算作完成。本阶段不提前关闭 Issue。
+
+## stage-04 实施边界
+
+主仓库分支 `codex/feat/tui-plugins` 与市场仓库 `codex/feat/tui-contributions`，两者开始时干净。
+单一执行者负责主仓库 `src/shared/tui-plugin.ts`、`src/tui/plugins*`、vault 泛型、
+`src/core/mysql.ts`、构建/验证及文档；市场仓库负责终端描述构建、清单版本、测试和文档。
+
+采用声明式终端贡献：JSON 声明命令目录/监控/MySQL/WSL，SHA-256 与 renderer 入口分开校验。
+已有 React 页面继续供 Electron 使用；TUI 只组合宿主提供的交互，未适配插件明确显示无终端入口。
+命令目录复用官方 data.ts，由构建脚本导出 JSON，不复制 100 条命令。
+MySQL 的可信 Node Core 会话直接连接用户录入的数据库，TUI 不需要额外代理端口或外部 Node。
+凭据仍用主密码派生密钥加密，数据库配置独立文件，不读取桌面 localStorage。
+
+验收：官方描述的安装/升级/禁用/卸载、命令搜索与发送确认、监控、MySQL 连接 CRUD/库表/结构/SQL/历史，
+WSL 真实列表与终端交接；本地 MySQL 协议夹具与 PTY/ConPTY 验证，不用真实服务器数据。
+原 SSH/SFTP 链保持有效。示例放 `examples/stage-04-tui-plugins/`，通过公开 CLI 和 `myssh-tui/mysql` 调用。
+WSL 真机执行取决于 Windows 已安装发行版；CI 至少验证系统调用/参数合同与未安装失败路径。

@@ -57,19 +57,52 @@ jobs:
       - name: TUI PTY interaction
         run: node scripts/verify-tui.mjs
 
+      - name: Terminal plugin market and database interaction
+        run: node scripts/verify-tui-plugins.mjs
+
       - name: Single executable without Node on PATH
         run: npm run verify:tui-portable
 
       - name: Block high or critical production vulnerabilities
         run: npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
 
+  verify-mysql:
+    name: Real MySQL integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: myssh-test-only
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -pmyssh-test-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:tui
+      - name: Real database CRUD and safety
+        run: node scripts/verify-mysql-real.mjs
+        env:
+          MYSSH_TEST_MYSQL_PORT: '3306'
+          MYSSH_TEST_MYSQL_PASSWORD: myssh-test-only
+
   verify:
     name: Lint, Typecheck, Test & Build
     if: always()
-    needs: verify-platform
+    needs: [verify-platform, verify-mysql]
     runs-on: ubuntu-latest
     steps:
       - name: Require every platform to pass
         env:
           VERIFY_RESULT: ${{ needs.verify-platform.result }}
-        run: test "$VERIFY_RESULT" = success
+          MYSQL_RESULT: ${{ needs.verify-mysql.result }}
+        run: test "$VERIFY_RESULT" = success && test "$MYSQL_RESULT" = success

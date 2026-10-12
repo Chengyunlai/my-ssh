@@ -9,6 +9,12 @@ import { editText } from './editor'
 import { localPath } from './paths'
 import { showServices } from './services'
 import { showPreview } from './preview'
+import { TerminalPluginMarket } from './plugin-market'
+import { TerminalPluginsUI } from './plugin-ui'
+import { MysqlWorkspace, type SavedMysqlProfile } from './mysql-workspace'
+import { showWsl } from './wsl'
+import { showLiveMonitor } from './monitor-view'
+import type { TuiContribution, CommandCatalogCategory } from '../shared/tui-plugin'
 
 interface Connection { sessionId: string; profile: Profile; error?: string; closed: boolean }
 
@@ -18,6 +24,11 @@ export class TuiApp {
   private readonly connections = new Map<string, Connection>()
   private vault?: EncryptedVault
   private store?: ProfileStore
+  private readonly market = new TerminalPluginMarket(path.join(dataDirectory(), 'plugins'), __MYSSH_VERSION__)
+  private databaseVault?: EncryptedVault<SavedMysqlProfile>
+  private databaseError?: string
+  private databaseUI?: MysqlWorkspace
+  private readonly localProcesses = new AbortController()
 
   constructor(private readonly ui: TerminalUI) {
     this.core.events.on('ssh:status', (status) => {
@@ -35,11 +46,13 @@ export class TuiApp {
         const selected = await this.ui.menu('MySSH · 终端工作区', [
           { label: '服务器 · 连接与配置', value: 'profiles' },
           { label: `会话 · ${[...this.connections.values()].filter((connection) => !connection.closed).length} 个在线`, value: 'sessions' },
+          { label: '插件 · 市场与工作台', value: 'plugins' },
           { label: '退出', value: 'exit' }
         ], 'SSH / SFTP / 系统监控 / 服务发现')
         if (!selected || selected === 'exit') return
         if (selected === 'profiles') await this.profiles()
         if (selected === 'sessions') await this.sessions()
+        if (selected === 'plugins') await this.plugins()
       } catch (error) { await this.report(error) }
     }
   }
@@ -61,6 +74,11 @@ export class TuiApp {
         this.store = new ProfileStore(this.vault)
         this.store.list()
         if (!existing) this.vault.write([])
+        try {
+          this.databaseVault = new EncryptedVault<SavedMysqlProfile>(path.join(dataDirectory(), 'databases.vault.json'), password, 'myssh-tui-databases-v1')
+          this.databaseUI = new MysqlWorkspace(this.ui, this.databaseVault)
+          this.databaseError = undefined
+        } catch (error) { this.databaseError = error instanceof Error ? error.message : String(error) }
         return
       } catch (error) {
         if (error instanceof Cancelled || error instanceof ExitRequested) throw new ExitRequested()
@@ -175,13 +193,14 @@ export class TuiApp {
       const action = await this.ui.menu(connection.profile.name, [
         { label: '终端 · 进入 / 切换 / 新建 / 关闭（Ctrl+] 返回菜单）', value: 'shells' },
         { label: 'SFTP 文件管理', value: 'files' }, { label: '系统监控', value: 'monitor' },
-        { label: '服务发现', value: 'services' }, { label: '断开连接', value: 'disconnect' }
+        { label: '服务发现', value: 'services' }, { label: '终端插件', value: 'plugins' }, { label: '断开连接', value: 'disconnect' }
       ], `${connection.profile.username}@${connection.profile.host}:${connection.profile.port}`)
       if (!action) return
       try {
         if (action === 'shells') await this.terminals(id)
         if (action === 'files') await this.files(id)
         if (action === 'monitor') await this.monitor(id)
+        if (action === 'plugins') await this.plugins(connection)
         if (action === 'services') {
           const result = await this.ui.busy('发现远端服务', this.core.services.scan(id))
           if (result.ok) await showServices(this.ui, result.snapshot, connection.profile)
@@ -194,6 +213,44 @@ export class TuiApp {
         }
       } catch (error) { await this.report(error) }
     }
+  }
+
+  private async selectConnection(): Promise<Connection | undefined> {
+    const live = [...this.connections.values()].filter((connection) => !connection.closed)
+    if (!live.length) { await this.ui.view('SSH 插件', '请先连接一台 SSH 服务器。'); return }
+    const id = await this.ui.menu('选择 SSH 会话', live.map((connection) => ({ label: connection.profile.name, value: connection.sessionId })))
+    return id ? this.connections.get(id) : undefined
+  }
+
+  private async plugins(connection?: Connection): Promise<void> {
+    const run = async (item: TuiContribution): Promise<void> => {
+      if (item.kind === 'mysql') {
+        if (!this.databaseUI) throw new Error(this.databaseError || '数据库 vault 尚未解锁')
+        await this.databaseUI.run()
+      } else if (item.kind === 'wsl') await showWsl(this.ui, this.localProcesses.signal)
+      else {
+        const selected = connection || await this.selectConnection()
+        if (!selected) return
+        if (item.kind === 'monitor') await showLiveMonitor(this.ui, this.core, selected.sessionId)
+        if (item.kind === 'commands') await this.commands(selected, item.categories)
+      }
+    }
+    await new TerminalPluginsUI(this.ui, this.market, run).show()
+  }
+
+  private async commands(connection: Connection, categories: CommandCatalogCategory[]): Promise<void> {
+    const command = await this.ui.menu('命令手册 · / 搜索', categories.flatMap((category) => category.commands.map((entry) => ({
+      label: `${entry.command} · ${entry.description} · ${category.name}`, value: entry
+    }))))
+    if (!command) return
+    await this.ui.view(command.command, command.description + '\n\n' + (command.example || command.command))
+    const action = await this.ui.menu('命令手册', [{ label: '返回', value: false }, { label: '发送到 SSH 终端（由你按 Enter 执行）', value: true }])
+    if (action !== true) return
+    const text = await this.ui.input('发送的命令（不发送 Enter）', command.example || command.command)
+    const shellId = await this.ui.menu('选择终端', this.shells.list(connection.sessionId).map((screen) => ({ label: screen.name, value: screen.shellId })))
+    if (!shellId) return
+    this.core.ssh.sendData(connection.sessionId, shellId, text)
+    await this.shells.attach(this.shells.list(connection.sessionId).find((screen) => screen.shellId === shellId)!)
   }
 
   private async terminals(id: string): Promise<void> {
@@ -330,8 +387,14 @@ export class TuiApp {
   }
 
   dispose(): void {
+    this.market.dispose()
+    this.localProcesses.abort()
+    this.databaseUI?.dispose()
+    this.databaseVault?.dispose()
     this.core.dispose()
     this.shells.dispose()
     this.vault?.dispose()
   }
 }
+
+declare const __MYSSH_VERSION__: string

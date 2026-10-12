@@ -145,6 +145,39 @@ export class TerminalUI {
     })
   }
 
+  async live(title: string, load: () => Promise<string[]>, interval = 3000): Promise<void> {
+    let lines = ['采集中…']
+    let stopped = false
+    let loading = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let offset = 0
+    const maximumOffset = (): number => Math.max(0, lines.length - (this.height - 5))
+    const render = (): void => {
+      offset = Math.min(offset, maximumOffset())
+      this.frame(title, lines.slice(offset).map((line) => fit(line, this.width - 3)), `${offset + 1}/${lines.length} · 每 3 秒采样 · ↑↓ 滚动 · r 刷新 · Enter / Esc 返回`)
+    }
+    const refresh = async (): Promise<void> => {
+      if (loading || stopped) return
+      loading = true
+      if (timer) clearTimeout(timer)
+      try { lines = await load() }
+      catch (error) { lines = [error instanceof Error ? error.message : String(error)] }
+      finally { loading = false }
+      if (!stopped) { render(); timer = setTimeout(() => { void refresh() }, interval) }
+    }
+    void refresh()
+    try {
+      await this.interact<void>(render, (text, key, done) => {
+        if (key.name === 'escape' || key.name === 'return') done()
+        else if (text === 'r') void refresh()
+        else if (key.name === 'up') { offset = Math.max(0, offset - 1); render() }
+        else if (key.name === 'down') { offset = Math.min(maximumOffset(), offset + 1); render() }
+        else if (key.name === 'pageup') { offset = Math.max(0, offset - this.height + 5); render() }
+        else if (key.name === 'pagedown') { offset = Math.min(maximumOffset(), offset + this.height - 5); render() }
+      })
+    } finally { stopped = true; if (timer) clearTimeout(timer) }
+  }
+
   async busy<T>(title: string, operation: Promise<T>, cancelOperation?: () => void): Promise<T> {
     this.frame(title, ['处理中…'], 'Ctrl+C 退出')
     let cancel!: () => void

@@ -6,11 +6,11 @@ import { fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const output = path.join(root, 'out/tui')
-const dependencies = Object.fromEntries(['ssh2', '@xterm/headless', '@xterm/addon-serialize', '@napi-rs/canvas', 'pdfjs-dist', 'image-size', 'mammoth', 'xlsx', 'utif'].map((name) => [name,
+const dependencies = Object.fromEntries(['ssh2', '@xterm/headless', '@xterm/addon-serialize', '@napi-rs/canvas', 'pdfjs-dist', 'image-size', 'mammoth', 'xlsx', 'utif', 'mysql2', 'undici'].map((name) => [name,
   name === 'xlsx' ? pkg.dependencies.xlsx : JSON.parse(fs.readFileSync(path.join(root, 'node_modules', name, 'package.json'), 'utf8')).version
 ]))
 fs.rmSync(output, { recursive: true, force: true })
-for (const [entry, filename] of [['src/tui/index.ts', 'myssh.cjs'], ['src/core/index.ts', 'core.cjs'], ['src/tui/preview-worker.ts', 'preview-worker.cjs']]) {
+for (const [entry, filename] of [['src/tui/index.ts', 'myssh.cjs'], ['src/core/index.ts', 'core.cjs'], ['src/core/mysql.ts', 'mysql.cjs'], ['src/tui/preview-worker.ts', 'preview-worker.cjs']]) {
   await build({
     root, configFile: false, define: { __MYSSH_VERSION__: JSON.stringify(pkg.version) },
     build: {
@@ -22,7 +22,10 @@ for (const [entry, filename] of [['src/tui/index.ts', 'myssh.cjs'], ['src/core/i
 fs.writeFileSync(path.join(output, 'package.json'), JSON.stringify({
   name: 'myssh-tui', version: pkg.version, description: 'MySSH terminal interface and Electron-independent SSH core',
   license: pkg.license, bin: { myssh: './myssh.cjs' }, main: './core.cjs',
-  exports: { './core': { types: './types/core/index.d.ts', require: './core.cjs', default: './core.cjs' } },
+  exports: {
+    './core': { types: './types/core/index.d.ts', require: './core.cjs', default: './core.cjs' },
+    './mysql': { types: './types/core/mysql.d.ts', require: './mysql.cjs', default: './mysql.cjs' }
+  },
   files: ['*.cjs', 'types', 'README.md', 'LICENSE'], engines: { node: '>=22.13.0' },
   dependencies, repository: pkg.repository
 }, null, 2) + '\n')

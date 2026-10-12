@@ -17,6 +17,18 @@ afterEach(() => { for (const directory of directories.splice(0)) fs.rmSync(direc
 const profile = { id: 'fixture', name: 'demo', host: '127.0.0.1', port: 22, username: 'demo', authType: 'password' as const, password: 'never-plaintext', passphrase: 'also-secret' }
 
 describe('encrypted TUI vault', () => {
+  it('encrypts database passwords/history and binds the vault to its purpose', () => {
+    const filename = file()
+    const database = new EncryptedVault<{ password: string; history: string[] }>(filename, 'master-password', 'myssh-tui-databases-v1')
+    const value = { password: 'database-secret', history: ['SELECT private_business_data'] }
+    database.write([value])
+    expect(database.read()).toEqual([value])
+    const text = fs.readFileSync(filename, 'utf8')
+    expect(text).not.toContain(value.password)
+    expect(text).not.toContain(value.history[0])
+    expect(() => new EncryptedVault(filename, 'master-password')).toThrow('无法解锁')
+    database.dispose()
+  })
   it('persists encrypted profiles and unlocks them with the correct password', () => {
     const filename = file()
     const vault = new EncryptedVault(filename, 'master-password')

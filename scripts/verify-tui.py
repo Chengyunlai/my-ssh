@@ -61,7 +61,7 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         marks[name] = output.decode(errors='replace')
 
     try:
-        expect('设置主密码')
+        expect('设置主密码', timeout=30)  # SEA cold start expands native dependencies before loading the TUI.
         send('fixture-master\r')
         expect('再次输入主密码')
         send('fixture-master\r')
@@ -142,8 +142,10 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         expect('Hello SFTP')
         send('\r')
         expect('用本地编辑器编辑')
-        send('\x1b[B\r')
-        expect('写回远端文件')
+        send('\x1b[B')
+        expect('› 用本地编辑器编辑')  # Confirm ConPTY delivered the navigation key before Enter.
+        send('\r')
+        expect('写回远端文件', timeout=30)  # Windows may scan a newly created editor fixture before launch.
         send('\x1b[B\r')
         expect('SFTP · /home/demo')
         expect('hello.txt')
@@ -201,7 +203,7 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         frame('services')
         send('\x1b')
         expect('SFTP 文件管理')
-        send('\x1b[B' * 4 + '\r')
+        send('/断开连接\r')
         expect('全部终端')
         send('\x1b[B\r')
         expect('Local demo')
