@@ -4,12 +4,14 @@ import { StringDecoder } from 'node:string_decoder'
 import { Client, type ClientChannel } from 'ssh2'
 import type { Profile, SessionStatus, TestConnectionResult } from '../shared/types'
 import type { CoreHost } from './host'
+import { CwdOutput } from './shell-output'
 
 interface Session {
   client: Client
   sessionId: string
   owner: CoreHost
   streams: Map<string, ClientChannel>
+  finishShellSetup: Map<string, () => void>
   /** 同一 SSH 连接内 shell 计数,用于生成可读名称(终端 1 / 终端 2 …) */
   shellSeq: number
   /** 每个 shell 独立的 cwd */
@@ -21,8 +23,6 @@ interface Session {
 }
 
 const sessions = new Map<string, Session>()
-
-const OSC7_RE = /\x1b\]7;file:\/\/[^\x07]*\x07/g
 
 const INJECT_SCRIPT =
   'if [ -n "$BASH_VERSION" ]; then __myssh_cwd(){ printf "\\033]7;file://%s%s\\007" "${HOSTNAME:-}" "$PWD"; }; ' +
@@ -320,35 +320,8 @@ function removeShell(session: Session, shellId: string): boolean {
   stream.end()
   session.streams.delete(shellId)
   session.cwds.delete(shellId)
+  session.finishShellSetup.delete(shellId)
   return true
-}
-
-/**
- * 单遍扫描:剔除 OSC 7 序列并解析最新 cwd。
- * 旧实现 matchAll + replace 对全文扫两遍,大流量下每 chunk 多付一倍正则成本。
- */
-function stripOsc7(text: string): { out: string; cwd: string | undefined } {
-  let cwd: string | undefined
-  let lastEnd = 0
-  let out = ''
-  let m: RegExpExecArray | null
-  OSC7_RE.lastIndex = 0
-  while ((m = OSC7_RE.exec(text)) !== null) {
-    out += text.slice(lastEnd, m.index)
-    lastEnd = m.index + m[0].length
-    const payload = m[0].slice(4, -1)
-    const pm = /^file:\/\/[^/]*(.*)$/.exec(payload)
-    if (pm) {
-      try {
-        cwd = decodeURIComponent(pm[1])
-      } catch {
-        cwd = pm[1]
-      }
-    }
-  }
-  if (lastEnd === 0) return { out: text, cwd: undefined }
-  out += text.slice(lastEnd)
-  return { out, cwd }
 }
 
 /**
@@ -421,28 +394,23 @@ function setupShell(
     })
     const cleaner = new StreamCleaner(INJECT_SCRIPT)
     const decoder = new StringDecoder('utf8')
-    let oscPending = ''
-    stream.on('data', (data: Buffer) => {
-      let text = cleaner.push(decoder.write(data))
+    const cwdOutput = new CwdOutput()
+    const forwardOutput = (text: string): void => {
       if (text) {
-        text = oscPending + text
-        oscPending = ''
-        const { out, cwd } = stripOsc7(text)
+        const { text: forward, cwd } = cwdOutput.push(text)
         if (cwd) session.cwds.set(shellId, cwd)
-        let forward = out
-        const lastOsc = forward.lastIndexOf('\x1b]')
-        if (lastOsc !== -1 && !forward.slice(lastOsc).includes('\x07')) {
-          oscPending = forward.slice(lastOsc)
-          forward = forward.slice(0, lastOsc)
-        }
         if (forward) batcher.push(forward)
       }
-    })
-    const flushTimer = setTimeout(() => {
-      const extra = cleaner.deactivate()
-      if (extra) batcher.push(extra)
-    }, 2500)
-    stream.on('close', () => clearTimeout(flushTimer))
+    }
+    stream.on('data', (data: Buffer) => forwardOutput(cleaner.push(decoder.write(data))))
+    const finishSetup = (): void => {
+      clearTimeout(flushTimer)
+      session.finishShellSetup.delete(shellId)
+      forwardOutput(cleaner.deactivate())
+    }
+    const flushTimer = setTimeout(finishSetup, 2500)
+    session.finishShellSetup.set(shellId, finishSetup)
+    stream.on('close', () => { clearTimeout(flushTimer); session.finishShellSetup.delete(shellId) })
     stream.write(`${INJECT_SCRIPT}\r`)
 
     stream.on('close', () => {
@@ -477,6 +445,7 @@ export function connect(profile: Profile, host: CoreHost): { sessionId: string }
     sessionId,
     owner: host,
     streams: new Map(),
+    finishShellSetup: new Map(),
     shellSeq: 0,
     cwds: new Map(),
     execChannels: new Set(),
@@ -587,7 +556,10 @@ export function testConnect(profile: Profile, host: CoreHost): Promise<TestConne
 }
 
 export function sendData(sessionId: string, shellId: string, data: string): void {
-  sessions.get(sessionId)?.streams.get(shellId)?.write(data)
+  const session = sessions.get(sessionId)
+  // Once the caller sends input, bytes belong to the user's application, not setup echo.
+  session?.finishShellSetup.get(shellId)?.()
+  session?.streams.get(shellId)?.write(data)
 }
 
 export function resize(sessionId: string, shellId: string, cols: number, rows: number): void {

@@ -115,3 +115,17 @@ MySQL 业务边界在 `src/core/mysql.ts`，独立公共模块 `myssh-tui/mysql`
 生成行修改使用服务器参数绑定，任意 SQL 需要用户预览与确认；结果/时间上限由 Core 拥有。
 连接文件使用独立用途 AAD，数据库文件损坏不阻止 SSH vault 解锁。
 示例与断点见 [stage-04](../examples/stage-04-tui-plugins/README.md)。
+
+## 终端兼容性与第三方作者入口
+
+`myssh-tui/plugin` 暴露 shared 的纯描述校验；`--validate-plugin` 复用同一合同，第三方共用业务数据生成 terminal.json。
+示例位于 [stage-05](../examples/stage-05-tui-compatibility/README.md)，不向插件开放任意 JS/Node 执行。
+DOCX/PPTX 由 TUI Worker 的 `office-content.ts` 解析包内 XML，ICO 位图由 `ico.ts` 解码。
+Core 的 `sftp.read(..., {rawBinary:true})` 为可信 Node 宿主提供最多 5 MiB 的原始字节，跳过预览缓存；该选项未暴露给桌面 IPC。
+原有 preload/renderer API 与凭据格式保持兼容。
+
+`CwdOutput` 仅处理 OSC 7，接受 BEL/ST 并限制未结束片段；其他 OSC 原样转发，以便 tmux 等应用与真实终端协商。
+用户首次输入时结束初始化回显过滤。TUI 输入通过 StringDecoder 拼接分块 UTF-8，Shell framebuffer 仍归宿主。
+真实 Vim/tmux 与 WSL 的自动链及人工字体/IME 条件见 [验收表](TUI-ACCEPTANCE.md)。
+
+WSL 在继承控制台期间保留当前替代屏幕，输入暂停等到 OS readStop 完成后启动子进程；退出恢复输入/监听器，应用最终退出才离开该屏幕。

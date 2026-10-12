@@ -41,7 +41,7 @@ export function createCore() {
     sftp: {
       home: (id: string) => owned(id, () => sftp.home(id)),
       list: (id: string, dir: string) => owned(id, () => sftp.list(id, dir)),
-      read: (id: string, remote: string, options?: { fresh?: boolean }): Promise<SftpReadResult> => owned(id, () => sftp.read(id, remote, events, options)),
+      read: (id: string, remote: string, options?: { fresh?: boolean; rawBinary?: boolean }): Promise<SftpReadResult> => owned(id, () => sftp.read(id, remote, events, options)),
       write: (id: string, remote: string, content: string) => owned(id, () => sftp.write(id, remote, content)),
       stat: (id: string, remote: string) => owned(id, () => sftp.stat(id, remote)),
       mkdir: (id: string, dir: string) => owned(id, () => sftp.mkdir(id, dir)),

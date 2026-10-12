@@ -48,6 +48,24 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Create disposable real WSL distribution
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/setup-ci-wsl.ps1
+
+      - name: Real WSL terminal handoff
+        if: runner.os == 'Windows'
+        run: python scripts/verify-wsl.py node
+
+      - name: WSL acceptance diagnostics
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wsl-acceptance
+          path: .dev/wsl-acceptance/
+          if-no-files-found: ignore
+          retention-days: 5
+
       - name: TUI entrypoint smoke
         run: node out/tui/myssh.cjs --help
 
@@ -60,11 +78,60 @@ jobs:
       - name: Terminal plugin market and database interaction
         run: node scripts/verify-tui-plugins.mjs
 
+      - name: Install real fullscreen terminal fixtures
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y vim tmux
+
+      - name: Real SSH Vim and tmux interaction
+        if: runner.os == 'Linux'
+        run: node scripts/verify-tui-terminal.mjs
+
       - name: Single executable without Node on PATH
         run: npm run verify:tui-portable
+        env:
+          MYSSH_VERIFY_REAL_TERMINAL: ${{ runner.os == 'Linux' && '1' || '0' }}
 
       - name: Block high or critical production vulnerabilities
         run: npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
+
+      - name: Remove only the CI-owned WSL distribution
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/cleanup-ci-wsl.ps1
+
+  verify-wsl:
+    name: Real WSL source host
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - name: Minimal terminal test dependency
+        run: |
+          npm install --prefix .dev/wsl-host --ignore-scripts --no-audit --no-fund @xterm/headless@6.0.0
+          Copy-Item scripts/tui-test-screen.mjs .dev/wsl-host/screen.mjs
+      - name: Create disposable real WSL distribution
+        shell: pwsh
+        run: ./scripts/setup-ci-wsl.ps1
+      - name: Real source UI handoff
+        run: python scripts/verify-wsl.py node
+        env:
+          MYSSH_WSL_TEST_ENTRY: examples/stage-05-tui-compatibility/core/wsl-host.mjs
+          MYSSH_SCREEN_READER: .dev/wsl-host/screen.mjs
+      - name: WSL source host diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wsl-source-host
+          path: .dev/wsl-acceptance/
+          if-no-files-found: ignore
+          retention-days: 5
+      - name: Remove only the CI-owned WSL distribution
+        if: always()
+        shell: pwsh
+        run: ./scripts/cleanup-ci-wsl.ps1
 
   verify-mysql:
     name: Real MySQL integration
@@ -98,11 +165,12 @@ jobs:
   verify:
     name: Lint, Typecheck, Test & Build
     if: always()
-    needs: [verify-platform, verify-mysql]
+    needs: [verify-platform, verify-mysql, verify-wsl]
     runs-on: ubuntu-latest
     steps:
       - name: Require every platform to pass
         env:
           VERIFY_RESULT: ${{ needs.verify-platform.result }}
           MYSQL_RESULT: ${{ needs.verify-mysql.result }}
-        run: test "$VERIFY_RESULT" = success && test "$MYSQL_RESULT" = success
+          WSL_RESULT: ${{ needs.verify-wsl.result }}
+        run: test "$VERIFY_RESULT" = success && test "$MYSQL_RESULT" = success && test "$WSL_RESULT" = success

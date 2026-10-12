@@ -3,7 +3,8 @@ import { createRequire } from 'node:module'
 import { createCanvas, loadImage, ImageData } from '@napi-rs/canvas'
 import { imageSize } from 'image-size'
 import * as XLSX from 'xlsx'
-import mammoth from 'mammoth'
+import { officeContent } from './office-content'
+import { decodeIcon } from './ico'
 import UTIF from 'utif'
 import { checkOfficeZip, colorBlocks, rasterSize, pdfAssetDirectory, PREVIEW_LIMITS, type PreviewRequest, type PreviewPage } from './preview-format'
 import { plain } from './ui'
@@ -36,12 +37,9 @@ export async function renderPreview(request: PreviewRequest): Promise<PreviewPag
         text: clipped(text.items.map((item) => 'str' in item ? item.str + (item.hasEOL ? '\n' : ' ') : '').join('')) }
     } finally { await loading.destroy() }
   }
-  if (extension === '.xlsx' || extension === '.xls' || extension === '.docx') {
+  if (extension === '.docx' || extension === '.pptx') return officeContent(bytes, extension, page)
+  if (extension === '.xlsx' || extension === '.xls') {
     checkOfficeZip(bytes)
-    if (extension === '.docx') {
-      const result = await mammoth.extractRawText({ buffer: Buffer.from(bytes) })
-      return { pages: 1, label: 'DOCX · 文字预览', text: clipped(result.value) }
-    }
     const workbook = XLSX.read(bytes, { type: 'array', sheetRows: 1000, cellFormula: false, cellHTML: false, cellStyles: false, bookVBA: false })
     const name = workbook.SheetNames[page]
     if (!name) throw new Error('工作表不存在')
@@ -55,37 +53,36 @@ export async function renderPreview(request: PreviewRequest): Promise<PreviewPag
   }
   if (extension === '.doc') throw new Error('旧版 DOC 需要下载后转换为 DOCX，终端和桌面的 DOCX 解析器均不支持二进制 DOC')
   const dimensions = imageSize(bytes)
-  const size = rasterSize(dimensions.width, dimensions.height, request.columns, request.rows)
+  let size = rasterSize(dimensions.width, dimensions.height, request.columns, request.rows)
   if (dimensions.type === 'svg' && /(?:<!DOCTYPE|<!ENTITY|<script|(?:href|url)\s*[=(:])/i.test(Buffer.from(bytes).toString('utf8'))) throw new Error('SVG 中包含外部引用或脚本，禁止预览')
   let image
+  let pages = 1
+  let label = `图片 · ${dimensions.width} × ${dimensions.height}`
   if (dimensions.type === 'tiff') {
     const buffer = Buffer.from(bytes)
     const frames = UTIF.decode(buffer)
-    const frame = frames[0]
-    if (!frame) throw new Error('TIFF 没有可预览图像')
-    rasterSize(Number((frame.t256 as number[])[0]), Number((frame.t257 as number[])[0]), request.columns, request.rows)
+    const frame = frames[page]
+    if (!frame || frames.length > 1000) throw new Error('TIFF 帧不存在或超过 1000 帧')
+    size = rasterSize(Number((frame.t256 as number[])[0]), Number((frame.t257 as number[])[0]), request.columns, request.rows)
     UTIF.decodeImage(buffer, frame)
     const source = createCanvas(frame.width, frame.height)
     source.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(UTIF.toRGBA8(frame)), frame.width, frame.height), 0, 0)
     image = source
+    pages = frames.length
+    label = `TIFF · ${page + 1}/${pages}`
   } else if (dimensions.type === 'ico') {
-    const buffer = Buffer.from(bytes)
-    const count = buffer.readUInt16LE(4)
-    let embedded: Buffer | undefined
-    for (let i = 0; i < count && 6 + (i + 1) * 16 <= buffer.length; i++) {
-      const offset = 6 + i * 16
-      const length = buffer.readUInt32LE(offset + 8)
-      const start = buffer.readUInt32LE(offset + 12)
-      if (start + length > buffer.length) throw new Error('ICO 条目损坏')
-      const candidate = buffer.subarray(start, start + length)
-      if (candidate.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) { embedded = candidate; break }
+    const icon = decodeIcon(bytes)
+    if ('png' in icon) {
+      const inner = imageSize(icon.png)
+      rasterSize(inner.width, inner.height, request.columns, request.rows)
+      image = await loadImage(icon.png)
+    } else {
+      const source = createCanvas(icon.width, icon.height)
+      source.getContext('2d').putImageData(new ImageData(icon.rgba, icon.width, icon.height), 0, 0)
+      image = source
     }
-    if (!embedded) throw new Error('此 ICO 没有 PNG 图像，请下载后用本地应用查看')
-    const inner = imageSize(embedded)
-    rasterSize(inner.width, inner.height, request.columns, request.rows)
-    image = await loadImage(embedded)
   } else image = await loadImage(Buffer.from(bytes))
   const canvas = createCanvas(size.width, size.height)
   canvas.getContext('2d').drawImage(image, 0, 0, size.width, size.height)
-  return { pages: 1, label: `图片 · ${dimensions.width} × ${dimensions.height}`, text: '', lines: colorBlocks(canvas.getContext('2d').getImageData(0, 0, size.width, size.height).data, size.width, size.height) }
+  return { pages, label, text: '', lines: colorBlocks(canvas.getContext('2d').getImageData(0, 0, size.width, size.height).data, size.width, size.height) }
 }

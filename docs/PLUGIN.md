@@ -439,3 +439,10 @@ terminal.json：
 终端安装校验最低版本/平台/独立 SHA-256；资源必须与 registry 同源、路径安全、大小最多 1 MiB。
 自建 registry 的 official 标记不被信任；官方徽章只来自固定官方 URL。第三方无终端入口会显示未适配。
 四个官方终端版本：command-book/mysql-manager 1.2.0、server-monitor 0.2.0、wsl-terminal 1.1.0。
+
+MySSH 1.6.0+ 的作者工具：`myssh-tui/plugin` 导出 `validateTuiPlugin` 及纯类型，
+`myssh --validate-plugin terminal.json` 可放入第三方 CI，失败退出码 1；仅校验描述，不安装或执行命令。
+可运行 [stage-05 作者示例](../examples/stage-05-tui-compatibility/user_code/README.md)：
+共用业务数据 → 描述校验 → 独立终端 SHA-256 → registry → 真实 CLI 安装 → 界面启用。
+现有 `tui-declarative-v1` 内容最低仍可声明 1.5.0；新增作者 API/CLI 需要作者环境安装 1.6.0+。
+示例通过第三方市场安装时没有官方徽章，安装默认停用；现有 React 组件保留在桌面，终端入口单独发布。

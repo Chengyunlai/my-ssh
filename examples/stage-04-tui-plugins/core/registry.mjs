@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
+import { terminalDescriptor } from '../../stage-05-tui-compatibility/user_code/main.mjs'
 
 /** Synthetic marketplace speaking the real terminal descriptor contract. */
 export async function startRegistryFixture() {
@@ -9,7 +10,7 @@ export async function startRegistryFixture() {
     ['fixture-commands', 'Commands fixture', { kind: 'commands', categories: [{ name: 'Fixture', commands: [{ command: 'hello', description: 'Synthetic SSH echo', example: 'hello' }] }] }],
     ['fixture-monitor', 'Monitor fixture', { kind: 'monitor' }]
   ].map(([id, name, contribution]) => {
-    const descriptor = Buffer.from(JSON.stringify({ schema: 1, id, contributions: [contribution] }))
+    const descriptor = Buffer.from(JSON.stringify(id === 'fixture-commands' ? terminalDescriptor(id) : { schema: 1, id, contributions: [contribution] }))
     resources.set(`/${id}/terminal.json`, descriptor)
     return { id, name, version: '1.0.0', description: 'Synthetic terminal plugin', official: true,
       tui: { kind: 'tui-declarative-v1', minAppVersion: '1.5.0', entry: `${id}/terminal.json`, sha256: createHash('sha256').update(descriptor).digest('hex') } }

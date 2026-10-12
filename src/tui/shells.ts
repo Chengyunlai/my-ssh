@@ -1,5 +1,6 @@
 import { Terminal } from '@xterm/headless'
 import { SerializeAddon } from '@xterm/addon-serialize'
+import { StringDecoder } from 'node:string_decoder'
 import type { MySshCore } from '../core'
 
 // 恢复菜单前清除远端应用可能启用的输入 / 鼠标模式。
@@ -78,6 +79,7 @@ export class ShellScreens {
     })
     if (!this.screens.has(this.key(screen.sessionId, screen.shellId))) return
     await new Promise<void>((resolve) => {
+      const input = new StringDecoder('utf8')
       const resize = (): void => {
         screen.terminal.resize(process.stdout.columns || 80, process.stdout.rows || 24)
         this.core.ssh.resize(screen.sessionId, screen.shellId, screen.terminal.cols, screen.terminal.rows)
@@ -93,9 +95,12 @@ export class ShellScreens {
       const data = (chunk: Buffer): void => {
         const escape = chunk.indexOf(0x1d) // Ctrl+] 由宿主占用，Ctrl+C 仍传给远端。
         if (escape >= 0) {
-          if (escape > 0) this.core.ssh.sendData(screen.sessionId, screen.shellId, chunk.subarray(0, escape).toString('utf8'))
+          if (escape > 0) this.core.ssh.sendData(screen.sessionId, screen.shellId, input.write(chunk.subarray(0, escape)))
           leave()
-        } else this.core.ssh.sendData(screen.sessionId, screen.shellId, chunk.toString('utf8'))
+        } else {
+          const decoded = input.write(chunk)
+          if (decoded) this.core.ssh.sendData(screen.sessionId, screen.shellId, decoded)
+        }
       }
       this.active = screen
       this.leave = leave

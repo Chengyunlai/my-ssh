@@ -34,6 +34,14 @@ class UnixTerminal:
     def write(self, data):
         os.write(self.fd, data)
 
+    def resize(self, cols, rows):
+        import fcntl
+        import struct
+        import termios
+        import signal
+        fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))
+        os.kill(self.pid, signal.SIGWINCH)
+
     def poll(self):
         if self.status is None:
             child, status = os.waitpid(self.pid, os.WNOHANG)
@@ -43,9 +51,17 @@ class UnixTerminal:
 
     def close(self):
         import signal
+        import time
         if self.poll() is None:
             os.kill(self.pid, signal.SIGTERM)
-            os.waitpid(self.pid, 0)
+            # A terminal app may write its reset sequence in the SIGTERM handler.
+            # Drain the PTY while waiting so a full output buffer cannot deadlock cleanup.
+            deadline = time.monotonic() + 2
+            while self.poll() is None and time.monotonic() < deadline:
+                self.read(0.05)
+            if self.poll() is None:
+                os.kill(self.pid, signal.SIGKILL)
+                os.waitpid(self.pid, 0)
         os.close(self.fd)
 
 

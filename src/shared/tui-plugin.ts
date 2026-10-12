@@ -13,7 +13,7 @@ function text(value: unknown, maximum: number): value is string { return typeof 
 /** Declarative terminal entries carry data only; executable JS/React/runtimes are never accepted here. */
 export function validateTuiPlugin(value: unknown, id: string): TuiPluginDescriptor {
   const descriptor = value as TuiPluginDescriptor
-  if (!descriptor || descriptor.schema !== 1 || descriptor.id !== id || !Array.isArray(descriptor.contributions) || !descriptor.contributions.length || descriptor.contributions.length > 8) throw new Error('终端插件描述格式无效')
+  if (typeof id !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || !descriptor || descriptor.schema !== 1 || descriptor.id !== id || !Array.isArray(descriptor.contributions) || !descriptor.contributions.length || descriptor.contributions.length > 8) throw new Error('终端插件描述格式无效')
   let commands = 0
   for (const item of descriptor.contributions) {
     if (!item || !['commands', 'monitor', 'mysql', 'wsl'].includes(item.kind)) throw new Error('终端插件包含不支持的能力')

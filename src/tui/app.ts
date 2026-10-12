@@ -344,10 +344,11 @@ export class TuiApp {
   }
 
   private async preview(id: string, remote: string): Promise<void> {
-    const result = await this.ui.busy('读取远端文件', this.core.sftp.read(id, remote))
+    const presentation = path.extname(remote).toLowerCase() === '.pptx'
+    const result = await this.ui.busy('读取远端文件', this.core.sftp.read(id, remote, presentation ? { rawBinary: true } : undefined))
     if (result.kind !== 'text') {
       if (result.truncated) throw new Error('文件超过预览上限，不能解析截断内容；请下载完整文件')
-      if (result.kind === 'binary') { await this.ui.view('文件预览', `二进制文件（${result.size} 字节），请下载后用本地应用打开。`); return }
+      if (result.kind === 'binary' && !presentation) { await this.ui.view('文件预览', `二进制文件（${result.size} 字节），请下载后用本地应用打开。`); return }
       const bytes = result.bytes || Buffer.from(result.dataUrl!.slice(result.dataUrl!.indexOf(',') + 1), 'base64')
       await showPreview(this.ui, bytes, remote)
       return

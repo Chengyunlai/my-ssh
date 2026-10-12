@@ -30,3 +30,4 @@
 ```
 
 当前宿主拆分决策见 [0006：共用 Core 与 TUI](0006-shared-core-and-tui.md)。
+终端预览、第三方作者合同与实际平台验证见 [0007](0007-tui-compatibility.md)。
