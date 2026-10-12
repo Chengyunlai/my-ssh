@@ -58,7 +58,8 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
         # Some ConPTY hosts don't surface the Node stderr handle; capture CLI errors in its VT transcript.
         entry = Path(os.environ.get('MYSSH_WSL_TEST_ENTRY', root / 'out/tui/myssh.cjs')).resolve()
         loader = "import(" + json.dumps(entry.as_uri()) + ");" if entry.suffix == '.mjs' else "require(" + json.dumps(str(entry)) + ");"
-        wrapper.write_text("console.error=(...a)=>process.stdout.write('CLI_ERROR '+a.map(String).join(' ')+'\\r\\n');const fail=e=>process.stdout.write('CLI_FATAL '+(e?.stack||e)+'\\r\\n',()=>process.exit(1));process.on('uncaughtException',fail);process.on('unhandledRejection',fail);" + loader, encoding='utf8')
+        logfile = json.dumps(str(target / 'cli-errors.txt'))
+        wrapper.write_text("const log=a=>require('node:fs').appendFileSync(" + logfile + ",a+'\\n');console.error=(...a)=>{log(a.map(String).join(' '));process.stdout.write('CLI_ERROR '+a.map(String).join(' ')+'\\r\\n')};const fail=e=>{log('CLI_FATAL '+(e?.stack||e));process.stdout.write('CLI_FATAL '+(e?.stack||e)+'\\r\\n',()=>process.exit(1))};process.on('uncaughtException',fail);process.on('unhandledRejection',fail);process.on('exit',code=>log('CLI_EXIT '+code));" + loader, encoding='utf8')
         command = [node, str(wrapper), '--wsl']
     environment = {**os.environ, 'MYSSH_TUI_HOME': directory}
     if len(sys.argv) > 2:
