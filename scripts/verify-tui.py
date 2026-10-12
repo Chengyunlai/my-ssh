@@ -142,7 +142,9 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         expect('Hello SFTP')
         send('\r')
         expect('用本地编辑器编辑')
-        send('\x1b[B\r')
+        send('\x1b[B')
+        expect('› 用本地编辑器编辑')  # Confirm ConPTY delivered the navigation key before Enter.
+        send('\r')
         expect('写回远端文件')
         send('\x1b[B\r')
         expect('SFTP · /home/demo')
