@@ -15,3 +15,5 @@ packet writer 仅用于模拟 wire protocol，不是使用者 API。真实数据
 
 观察路径：公开 MysqlSession → 真实 TCP 握手 → query/executeMutation 的列/行或 affectedRows → user_code 输出。
 终端路径：市场 JSON → validateTuiPlugin → 宿主已知能力 → Core 调用 → TerminalUI。
+
+主仓库 C1：`173f305c5b3e9dec41c5d5e35ea10f439c980e32`；市场 C1：`0d1a0cb009d7643ce8f8d29913bb89a4342e1712`。

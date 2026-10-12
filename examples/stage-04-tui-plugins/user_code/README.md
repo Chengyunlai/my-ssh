@@ -9,3 +9,5 @@
 
 断点：MysqlSession.connect 观察 profile.port；query 观察 SQL 和收到的列/行；
 用户代码 console.log 观察 `MYSQL_OK 你好`。生成包同时提供 ESM/CJS 入口和声明文件。
+
+主仓库 C1：`173f305c5b3e9dec41c5d5e35ea10f439c980e32`；市场 C1：`0d1a0cb009d7643ce8f8d29913bb89a4342e1712`。
