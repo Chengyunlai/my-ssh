@@ -25,6 +25,33 @@ names = list(dict.fromkeys(name.strip() for name in listing.decode('utf-16-le' i
 assert distro in names, 'Requested distribution must be present in the real WSL list'
 node = shutil.which(sys.argv[1]) or sys.argv[1]
 command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else [node, str(root / 'out/tui/myssh.cjs'), '--wsl']
+target = root / '.dev' / 'wsl-acceptance'
+target.mkdir(parents=True, exist_ok=True)
+
+if os.environ.get('GITHUB_ACTIONS') == 'true' and len(sys.argv) == 2:
+    with tempfile.TemporaryDirectory(prefix='myssh-wsl-probes-') as directory:
+        for case in ['direct', 'inherit', 'paused']:
+            if case == 'direct':
+                probe_command = [wsl, '--distribution', distro]
+            else:
+                script = Path(directory, case + '.cjs')
+                setup = 'process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setRawMode(false);process.stdin.pause();' if case == 'paused' else ''
+                script.write_text(setup + "const c=require('node:child_process').spawn(" + json.dumps(wsl) + ",['--distribution'," + json.dumps(distro) + "],{stdio:'inherit',shell:false});c.on('close',code=>process.exitCode=code??1);", encoding='utf8')
+                probe_command = [node, str(script)]
+            probe_terminal = TerminalProcess(probe_command, directory, os.environ)
+            transcript = bytearray()
+            try:
+                time.sleep(0.5)
+                probe_terminal.write(b"printf '%s%s\\n' 'DIRECT_' 'OK'\r")
+                deadline = time.monotonic() + 8
+                while time.monotonic() < deadline:
+                    transcript.extend(probe_terminal.read(0.05))
+                    if b'DIRECT_OK' in transcript or probe_terminal.poll() is not None:
+                        break
+                print('WSL console probe:', case, 'marker=', b'DIRECT_OK' in transcript, 'exit=', probe_terminal.poll())
+            finally:
+                (target / (case + '.ansi')).write_bytes(transcript)
+                probe_terminal.close()
 with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
     environment = {**os.environ, 'MYSSH_TUI_HOME': directory}
     if len(sys.argv) > 2:
@@ -51,7 +78,7 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
             matches = bool(re.search(text, screen, re.MULTILINE)) if pattern else text.encode() in output[position:] or text in screen
             if matches:
                 return
-        raise AssertionError('WSL expected ' + repr(text) + ': ' + output[-1600:].decode(errors='replace'))
+        raise AssertionError('WSL expected ' + repr(text) + ', process=' + str(terminal.poll()) + ', screen=' + repr(screen) + ': ' + output[-1600:].decode(errors='replace'))
 
     def send(text):
         global position
@@ -79,11 +106,10 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
         while terminal.poll() is None and time.monotonic() < deadline:
             read()
         assert terminal.poll() == 0, 'WSL exit should return and restore the host terminal'
-        target = root / '.dev' / 'wsl-acceptance'
-        target.mkdir(parents=True, exist_ok=True)
-        (target / ('standalone.ansi' if len(sys.argv) > 2 else 'node.ansi')).write_bytes(output)
         print('REAL_WSL_OK: installed Linux distribution, ConPTY handoff, Unicode command, Ctrl+C continuation, exit and host restoration.')
     finally:
+        (target / ('standalone.ansi' if len(sys.argv) > 2 else 'node.ansi')).write_bytes(output)
+        (target / 'state.json').write_text(json.dumps({'screen': screen, 'exit': terminal.poll()}, ensure_ascii=True))
         terminal.close()
         reader.stdin.close()
         reader.wait(timeout=5)

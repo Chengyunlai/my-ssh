@@ -57,6 +57,15 @@ jobs:
         if: runner.os == 'Windows'
         run: python scripts/verify-wsl.py node
 
+      - name: WSL acceptance diagnostics
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wsl-acceptance
+          path: .dev/wsl-acceptance/
+          if-no-files-found: ignore
+          retention-days: 5
+
       - name: TUI entrypoint smoke
         run: node out/tui/myssh.cjs --help
 
