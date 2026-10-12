@@ -30,13 +30,18 @@ target.mkdir(parents=True, exist_ok=True)
 
 if os.environ.get('GITHUB_ACTIONS') == 'true' and len(sys.argv) == 2:
     with tempfile.TemporaryDirectory(prefix='myssh-wsl-probes-') as directory:
-        for case in ['direct', 'inherit', 'paused']:
+        for case in ['direct', 'inherit', 'paused', 'alternate', 'listed']:
             if case == 'direct':
                 probe_command = [wsl, '--distribution', distro]
             else:
                 script = Path(directory, case + '.cjs')
-                setup = 'process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setRawMode(false);process.stdin.pause();' if case == 'paused' else ''
-                script.write_text(setup + "const c=require('node:child_process').spawn(" + json.dumps(wsl) + ",['--distribution'," + json.dumps(distro) + "],{stdio:'inherit',shell:false});c.on('close',code=>process.exitCode=code??1);", encoding='utf8')
+                setup = 'process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setRawMode(false);process.stdin.pause();' if case in ['paused', 'alternate'] else ''
+                if case == 'alternate':
+                    setup += "process.stdout.write('\\x1b[?1049h\\x1b[?1049l');"
+                launch = "const c=require('node:child_process').spawn(" + json.dumps(wsl) + ",['--distribution'," + json.dumps(distro) + "],{stdio:'inherit',shell:false});c.on('close',code=>process.exitCode=code??1);"
+                if case == 'listed':
+                    launch = "require('node:child_process').execFile(" + json.dumps(wsl) + ",['--list','--quiet'],{encoding:'buffer',windowsHide:true},()=>{" + launch + "});"
+                script.write_text(setup + launch, encoding='utf8')
                 probe_command = [node, str(script)]
             probe_terminal = TerminalProcess(probe_command, directory, os.environ)
             transcript = bytearray()
