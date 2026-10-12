@@ -13,3 +13,7 @@
 [stage-03-tui-portable](stage-03-tui-portable/README.md)：公开 `--preview` 调用、免 Node 单文件分发，
 先运行 `user_code/main.mjs`；设计见 [tui-followup](../docs/plans/tui-followup.md)，
 实现见 [stage-03](../docs/implementation/stage-03.md)。
+
+[stage-04-tui-plugins](stage-04-tui-plugins/README.md)：先 `npm run example:mysql`，看到
+`MYSQL_OK 你好`；公共 Node MySQL 核心、声明式终端市场与官方适配，见
+[stage-04](../docs/implementation/stage-04.md)。

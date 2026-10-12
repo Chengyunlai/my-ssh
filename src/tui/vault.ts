@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
-import type { Profile, ProfilePersistence } from '../core'
+import type { Profile } from '../core'
 
 interface Envelope {
   version: 1
@@ -20,11 +20,11 @@ export function dataDirectory(): string {
 }
 
 /** 独立于桌面 safeStorage 文件；主密码只保留在内存，损坏 / 错误口令不会重置数据。 */
-export class EncryptedVault implements ProfilePersistence {
+export class EncryptedVault<T = Profile> {
   private readonly key: Buffer
   private readonly salt: Buffer
 
-  constructor(private readonly filename: string, password: string) {
+  constructor(private readonly filename: string, password: string, private readonly context = 'myssh-tui-vault-v1') {
     if (Array.from(password).length < 8) throw new Error('主密码至少需要 8 个字符')
     const existing = this.envelope()
     this.salt = existing ? this.decode(existing.salt, 16) : randomBytes(16)
@@ -52,15 +52,15 @@ export class EncryptedVault implements ProfilePersistence {
     return value
   }
 
-  read(): Profile[] {
+  read(): T[] {
     const value = this.envelope()
     if (!value) return []
     try {
       const decipher = createDecipheriv('aes-256-gcm', this.key, this.decode(value.iv, 12))
-      decipher.setAAD(Buffer.from('myssh-tui-vault-v1'))
+      decipher.setAAD(Buffer.from(this.context))
       decipher.setAuthTag(this.decode(value.tag, 16))
       const json = Buffer.concat([decipher.update(this.decode(value.data)), decipher.final()]).toString('utf8')
-      const profiles = JSON.parse(json) as Profile[]
+      const profiles = JSON.parse(json) as T[]
       if (!Array.isArray(profiles)) throw new Error('配置列表无效')
       return profiles
     } catch {
@@ -68,10 +68,10 @@ export class EncryptedVault implements ProfilePersistence {
     }
   }
 
-  write(profiles: Profile[]): void {
+  write(profiles: T[]): void {
     const iv = randomBytes(12)
     const cipher = createCipheriv('aes-256-gcm', this.key, iv)
-    cipher.setAAD(Buffer.from('myssh-tui-vault-v1'))
+    cipher.setAAD(Buffer.from(this.context))
     const data = Buffer.concat([cipher.update(JSON.stringify(profiles), 'utf8'), cipher.final()])
     const value: Envelope = {
       version: 1, salt: this.salt.toString('base64'), iv: iv.toString('base64'),

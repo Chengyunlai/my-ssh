@@ -1,4 +1,5 @@
 import type { Application, ServiceRecord } from './netlist'
+import type { TuiPluginManifest } from './tui-plugin'
 
 export type AuthType = 'password' | 'key'
 
@@ -381,6 +382,8 @@ export interface MarketPluginInfo {
   sha256: string
   /** 可选的受控 companion runtime；由宿主安装和启动。 */
   runtime?: MarketPluginRuntime
+  /** 独立于 React renderer entry 的声明式终端入口。 */
+  tui?: TuiPluginManifest
   /** 主进程解析后的绝对下载地址 */
   entryUrl: string
 }

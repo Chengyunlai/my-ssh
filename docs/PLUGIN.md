@@ -417,3 +417,25 @@ definePlugin({
 现有 React 面板及 Companion Runtime 的加载属于 Electron 宿主，TUI 不加载它们。
 新增 TUI 插件需要独立的终端交互合同，不能把 React bundle 当作终端插件执行。
 内置 SFTP、监控和服务发现由两种界面调用共用核心提供。
+
+## 终端入口：tui-declarative-v1（MySSH 1.5.0+）
+
+React renderer entry/runtime 继续供 Electron 使用。registry 可额外声明：
+
+```json
+{"tui":{"kind":"tui-declarative-v1","entry":"command-book/terminal.json","sha256":"<64 hex>","minAppVersion":"1.5.0"}}
+```
+
+terminal.json：
+
+```json
+{"schema":1,"id":"command-book","contributions":[{"kind":"commands","categories":[{"name":"Demo","commands":[{"command":"pwd","description":"显示当前目录"}]}]}]}
+```
+
+贡献支持 commands/monitor/mysql/wsl，由终端宿主组合已实现能力，不加载外部 JS/React 或 Companion Runtime。
+命令条目不允许终端控制字符/换行，目录内容只有用户选择后才能发送到 SSH Shell，不发送 Enter。
+新界面能力需扩展版本化宿主合同；任意 React 页面不能自动转换为终端。
+
+终端安装校验最低版本/平台/独立 SHA-256；资源必须与 registry 同源、路径安全、大小最多 1 MiB。
+自建 registry 的 official 标记不被信任；官方徽章只来自固定官方 URL。第三方无终端入口会显示未适配。
+四个官方终端版本：command-book/mysql-manager 1.2.0、server-monitor 0.2.0、wsl-terminal 1.1.0。

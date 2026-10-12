@@ -33,7 +33,7 @@ Release 工作流会附带同一份平台无关 tgz；从对应版本的 Release
 ## 免安装单文件程序
 
 `npm run pack:tui-portable` 在 Node 22 LTS 下构建当前平台的程序与 `.sha256`。
-Release 工作流会为下一版本构建 macOS arm64、Windows x64 和 Linux x64 三种程序：
+Release 工作流从 1.5.0 起构建 macOS arm64、Windows x64 和 Linux x64 三种程序：
 
 | 平台 | 文件 | 启动 |
 | --- | --- | --- |
@@ -82,8 +82,8 @@ TUI 使用独立 `profiles.vault.json`，scrypt 派生密钥、AES-256-GCM 验�
 | Linux | `$XDG_CONFIG_HOME/myssh-tui` 或 `~/.config/myssh-tui` |
 
 `MYSSH_TUI_HOME` 可指定其他目录。独立 vault 不自动迁移 Electron safeStorage 的配置；
-两端共用核心规则，各自使用适合宿主的存储方式。已有 React 外部插件需要专门的 TUI 界面适配，
-当前不会加载 React 插件、插件市场或 Companion Runtime。
+两端共用核心规则，各自使用适合宿主的存储方式。
+终端市场只加载独立声明式入口，React 页面仍供桌面使用；TUI 不需要 Companion Runtime。
 
 每个 Shell 使用有上限的 headless xterm buffer 保存屏幕；后台输出只更新对应 buffer。
 恢复前等待已排队输出并重新设置远端 PTY 尺寸；scrollback 上限为 1000 行。
@@ -109,3 +109,29 @@ Shell 屏幕恢复依赖 xterm SerializeAddon；[上游说明](https://github.co
 将其标为实验性能力，复杂远端终端应用仍需要跨终端实测。
 
 `npm run verify:desktop-core` 在图形桌面环境验证真实 Electron preload/IPC，使用独立临时数据目录。
+
+## 终端插件（1.5.0+）
+
+「插件」→「插件市场」→ 安装 → 启用 → 打开。官方市场与桌面共用地址，终端入口独立校验。
+未提供终端入口的第三方插件会显示「尚无终端入口」，不会静默当作已适配。
+安装默认停用；可更新、启停、卸载；损坏插件可在界面中移除/重新安装。
+
+| 官方插件 | 终端能力 |
+| --- | --- |
+| 命令手册 1.2.0 | 原有 100 条命令搜索、查看、编辑并发送到所选 SSH Shell；由用户按 Enter 执行 |
+| 服务器监控 0.2.0 | 3 秒采样、CPU/内存趋势、网络速率、磁盘与负载；可滚动，退出后停止调度 |
+| MySQL 管理器 1.2.0 | 加密连接 CRUD、严格 TLS 可选、库表/结构/索引/建表 SQL、分页、SQL/编辑器/历史、排序/CSV、参数化行新增/修改/删除 |
+| WSL 1.1.0 | Windows 实际发行版列表与交互终端；需本机已安装 WSL/发行版，输入 exit 返回 |
+
+MySQL 配置与 30 条最近查询存于独立的 databases.vault.json，使用与 SSH vault 相同主密码、独立盐和用途绑定。
+不读取桌面 localStorage，不要求代理服务或额外 Node。TLS 验证服务器证书，私有 CA 可使用 Node 的 NODE_EXTRA_CA_CERTS。
+默认 SQL 单次最多 64 KiB、15 秒，结果最多 1000 行/100 列/2 MiB，长字段也会截断并明确标记。
+表浏览每页 100 行，含主键时按主键排序；无完整主键或结果截断时不允许行修改，仍可执行明确 SQL。
+修改前显示 SQL 与参数并确认，不自动回滚或重试；超时后需检查服务器结果。
+CSV 只导出当前结果，危险公式前缀转为文字；SQL 编辑高亮与补全由配置的本地编辑器提供。
+
+也可 `myssh --install-plugin command-book` 无交互安装；`--registry` 指定自建市场。
+网络请求支持 HTTP_PROXY/HTTPS_PROXY/NO_PROXY，回环服务始终直连；退出会取消下载。
+
+公开数据库 API：`myssh-tui/mysql` 的 MysqlSession.connect/query/executeMutation/close。
+`npm run example:mysql` 提供最短公共调用；`npm run verify:tui-plugins` 验证市场与真实键盘链路。

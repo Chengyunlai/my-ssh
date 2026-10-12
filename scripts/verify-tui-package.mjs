@@ -6,6 +6,7 @@ import os from 'node:os'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { startFixture } from '../examples/stage-01-core-tui/core/server.mjs'
+import { startMysqlFixture } from '../examples/stage-04-tui-plugins/core/mysql-server.mjs'
 
 const execute = promisify(execFile)
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
@@ -24,12 +25,19 @@ try {
   const version = await execute(process.execPath, [binary, '--version'], { cwd: directory })
   assert.equal(version.stdout.trim(), pkg.version)
   const consumer = path.join(directory, 'consumer.mts')
-  fs.writeFileSync(consumer, "import { createCore, type MySshCore, type Profile } from 'myssh-tui/core'; const core: MySshCore = createCore(); const profile: Profile = {id:'demo',name:'demo',host:'127.0.0.1',port:22,username:'demo',authType:'password'}; void profile; core.dispose();")
+  fs.writeFileSync(consumer, "import { createCore, type MySshCore, type Profile } from 'myssh-tui/core'; import { MysqlSession, type MysqlProfile } from 'myssh-tui/mysql'; const core: MySshCore = createCore(); const profile: Profile = {id:'demo',name:'demo',host:'127.0.0.1',port:22,username:'demo',authType:'password'}; const database: MysqlProfile = {id:'demo',name:'demo',host:'127.0.0.1',port:3306,user:'demo',password:'fixture'}; void database; void MysqlSession; void profile; core.dispose();")
   await execute(process.execPath, [path.resolve('node_modules/typescript/bin/tsc'), '--noEmit', '--strict', '--module', 'NodeNext', '--target', 'ES2022', consumer], { cwd: directory })
   const esm = await execute(process.execPath, ['--input-type=module', '-e', "import { createCore } from 'myssh-tui/core'; createCore().dispose(); console.log('ESM_IMPORT_OK')"], { cwd: directory })
   assert.match(esm.stdout, /ESM_IMPORT_OK/)
   const core = await execute(process.execPath, ['-e', "const core = require('myssh-tui/core').createCore(); core.dispose(); console.log('CORE_IMPORT_OK')"], { cwd: directory })
   assert.match(core.stdout, /CORE_IMPORT_OK/)
+  const mysqlFixture = await startMysqlFixture()
+  const installedMysql = createRequire(path.join(directory, 'package.json'))('myssh-tui/mysql')
+  let database
+  try {
+    database = await installedMysql.MysqlSession.connect(mysqlFixture.profile)
+    assert.equal((await database.query('SELECT fixture')).rows[0][0], 'MYSQL_OK 你好')
+  } finally { database?.close(); await mysqlFixture.close() }
   const fixture = await startFixture()
   const installedCore = createRequire(path.join(directory, 'package.json'))('myssh-tui/core').createCore()
   try {

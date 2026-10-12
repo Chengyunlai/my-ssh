@@ -33,7 +33,7 @@
 ## 终端版本(TUI)
 
 同一份 SSH / SFTP 核心现在也可在终端中使用：连接管理、多会话 / 多 Shell、远程文件管理、
-文件预览编辑、系统监控与服务发现。无需 Electron 或图形桌面；npm 包需要 Node.js，后续版本同时提供自带运行时的单文件程序。
+文件预览编辑、系统监控与服务发现。无需 Electron 或图形桌面；npm 包需要 Node.js，1.5.0 同时提供自带运行时的单文件程序。
 
 ```bash
 npm ci
@@ -51,8 +51,9 @@ myssh
 从 1.4.0 起，Release 工作流会附带 `myssh-tui-<版本>.tgz`。当前发布准备与验收结果见
 [实现记录](docs/implementation/stage-02.md)。
 TUI 的操作、主密码加密存储、编辑器配置与桌面差异见 [docs/TUI.md](docs/TUI.md)。
-后续版本增加终端图片、PDF 分页和 Office 内容预览，以及 `npm run pack:tui-portable` 免 Node 程序。
-现有 1.4.0 不包含这些新增能力。外部 React 插件仍需要单独适配，进度见 [Issue #32](https://github.com/Chengyunlai/my-ssh/issues/32)。
+1.5.0 增加终端图片、PDF 分页和 Office 内容预览，以及 `npm run pack:tui-portable` 免 Node 程序。
+现有 1.4.0 不包含这些新增能力。四个官方插件提供独立终端入口；第三方插件需要声明终端能力，React 页面仍供桌面使用。
+进度见 [Issue #32](https://github.com/Chengyunlai/my-ssh/issues/32)。
 可运行示例见 [stage-03](examples/stage-03-tui-portable/README.md)。
 
 | 终端会话 | SFTP 文件管理 |

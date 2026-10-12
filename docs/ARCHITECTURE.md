@@ -104,3 +104,14 @@ ANSI 序列仅由 RGB 整数生成；图像处理库不进入 Core 或 renderer�
 `scripts/build-tui-portable.mjs` 安装锁定的精简依赖并嵌入 Node SEA；
 `sea-launcher.cjs` 仅使用 Node 内置模块展开受信的构建资产，再加载 TUI。
 详见 [stage-03 设计](plans/tui-followup.md)。
+
+## 声明式终端插件与 MySQL Core
+
+`src/shared/tui-plugin.ts` 是无 DOM/Node 的贡献合同；terminal.json 仅声明 commands/monitor/mysql/wsl。
+`src/tui/plugin-market.ts` 校验来源/兼容性/摘要并保存终端自己的启用状态，`plugin-ui.ts` 组合已知宿主能力。
+不执行市场提供的 React 或 Node JS。市场仓库从既有命令 data.ts 导出，不复制命令库。
+MySQL 业务边界在 `src/core/mysql.ts`，独立公共模块 `myssh-tui/mysql`；会话由调用者 close，
+不归 SSH 的 createCore 事件域管理。TUI 只负责配置、加密 vault 与界面；桌面原 Companion Runtime 保持原合同。
+生成行修改使用服务器参数绑定，任意 SQL 需要用户预览与确认；结果/时间上限由 Core 拥有。
+连接文件使用独立用途 AAD，数据库文件损坏不阻止 SSH vault 解锁。
+示例与断点见 [stage-04](../examples/stage-04-tui-plugins/README.md)。

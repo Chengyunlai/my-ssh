@@ -201,7 +201,7 @@ with tempfile.TemporaryDirectory(prefix='myssh tui verify ') as directory:
         frame('services')
         send('\x1b')
         expect('SFTP 文件管理')
-        send('\x1b[B' * 4 + '\r')
+        send('/断开连接\r')
         expect('全部终端')
         send('\x1b[B\r')
         expect('Local demo')
