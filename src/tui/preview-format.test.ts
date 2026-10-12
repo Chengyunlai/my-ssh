@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkOfficeZip, colorBlocks, rasterSize } from './preview-format'
+import { checkOfficeZip, colorBlocks, rasterSize, pdfAssetDirectory } from './preview-format'
 import { renderPreview } from './preview-render'
 import { createCanvas, PDFDocument } from '@napi-rs/canvas'
 import * as XLSX from 'xlsx'
@@ -8,6 +8,10 @@ import UTIF from 'utif'
 const request = { filename: 'test.png', page: 0, columns: 40, rows: 12 }
 
 describe('terminal document previews', () => {
+  it('uses forward-slash terminated PDF resource paths on Windows and Unix', () => {
+    expect(pdfAssetDirectory('D:\\my ssh\\node_modules\\pdfjs-dist', 'cmaps')).toBe('D:/my ssh/node_modules/pdfjs-dist/cmaps/')
+    expect(pdfAssetDirectory('/tmp/my ssh/pdfjs-dist/', 'wasm')).toBe('/tmp/my ssh/pdfjs-dist/wasm/')
+  })
   it('generates RGB sequences from pixels and preserves transparent backgrounds', () => {
     expect(colorBlocks(new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 0, 0]), 1, 2)).toEqual(['\x1b[38;2;255;0;0m\x1b[48;2;255;255;255m▀\x1b[0m'])
   })

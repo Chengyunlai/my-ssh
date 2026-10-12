@@ -3,6 +3,11 @@ export const PREVIEW_LIMITS = { bytes: 5 * 1024 * 1024, pixels: 12_000_000, expa
 export interface PreviewRequest { bytes: Uint8Array; filename: string; page: number; columns: number; rows: number }
 export interface PreviewPage { lines?: string[]; text: string; pages: number; label: string }
 
+/** PDF.js checks URL separators even when its Node factory reads a local filesystem path. */
+export function pdfAssetDirectory(directory: string, name: 'cmaps' | 'standard_fonts' | 'wasm'): string {
+  return `${directory.replaceAll('\\', '/').replace(/\/$/, '')}/${name}/`
+}
+
 /** Only generated RGB integers become ANSI sequences; document bytes never become terminal commands. */
 export function colorBlocks(pixels: Uint8ClampedArray, width: number, height: number): string[] {
   const rgb = (x: number, y: number): string => {

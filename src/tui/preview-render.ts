@@ -5,7 +5,7 @@ import { imageSize } from 'image-size'
 import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
 import UTIF from 'utif'
-import { checkOfficeZip, colorBlocks, rasterSize, PREVIEW_LIMITS, type PreviewRequest, type PreviewPage } from './preview-format'
+import { checkOfficeZip, colorBlocks, rasterSize, pdfAssetDirectory, PREVIEW_LIMITS, type PreviewRequest, type PreviewPage } from './preview-format'
 import { plain } from './ui'
 
 function clipped(value: string): string { return plain(value).slice(0, PREVIEW_LIMITS.text) + (value.length > PREVIEW_LIMITS.text ? '\n…预览已截断' : '') }
@@ -19,9 +19,9 @@ export async function renderPreview(request: PreviewRequest): Promise<PreviewPag
     const directory = path.dirname(require.resolve('pdfjs-dist/package.json'))
     const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
     const loading = getDocument({ data: new Uint8Array(bytes), useWorkerFetch: false, maxImageSize: PREVIEW_LIMITS.pixels,
-      cMapUrl: path.join(directory, 'cmaps') + path.sep, cMapPacked: true,
-      standardFontDataUrl: path.join(directory, 'standard_fonts') + path.sep,
-      wasmUrl: path.join(directory, 'wasm') + path.sep, verbosity: 0 })
+      cMapUrl: pdfAssetDirectory(directory, 'cmaps'), cMapPacked: true,
+      standardFontDataUrl: pdfAssetDirectory(directory, 'standard_fonts'),
+      wasmUrl: pdfAssetDirectory(directory, 'wasm'), verbosity: 0 })
     try {
       const document = await loading.promise
       if (page < 0 || page >= document.numPages) throw new Error('PDF 页码超出范围')

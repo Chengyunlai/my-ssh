@@ -34,7 +34,7 @@ Windows 原生模块可能在退出时仍锁定，临时目录清理为尽力而
 
 ## 验证
 
-- `make check`：lint、Node/web 类型检查、29 文件/268 测试、Electron/TUI 构建通过。
+- `make check`：lint、Node/web 类型检查、29 文件/269 测试、Electron/TUI 构建通过。
 - `npm run verify:tui-package`：独立 tgz 安装，无 Electron/React，CJS/ESM/TS 公共 Core、真实 SSH/SFTP 通过。
 - `npm run verify:tui-portable`：复制单文件程序到仓库外目录，应用 PATH 无 node/npm，
   实际 PNG 像素、PDF 分页/文字、XLSX 工作表、DOCX 中文预览和原有完整 PTY SSH/SFTP 操作链通过。
@@ -64,3 +64,7 @@ colorBlocks 的 lines、sea-launcher 的 entries。Mermaid 图见设计记录，
 
 终端插件合同和官方插件适配仍在 Issue #32 内。1.4.0 Release 未被修改；
 三平台新程序通过 CI 后，再组合后续版本发布，不能将本地二进制称为已公开发布。
+
+首次三平台运行 [38206344205](https://github.com/Chengyunlai/my-ssh/actions/runs/38206344205)：
+Linux/macOS 全链通过，Windows 发现 PDF.js 要求资源目录以 `/` 结尾，原 `path.sep` 为反斜杠。
+已归一化为 Node filesystem 支持的正斜杠路径，补充 Windows/Unix 路径回归测试；修正后 CI 待复验。
