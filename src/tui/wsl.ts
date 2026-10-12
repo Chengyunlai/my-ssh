@@ -47,7 +47,10 @@ export async function showWsl(ui: TerminalUI, signal?: AbortSignal): Promise<voi
   const name = await ui.menu('WSL · 输入 exit 返回 MySSH', names.map((name) => ({ label: name, value: name })))
   if (!name) return
   ui.suspend()
+  // Console Ctrl+C is delivered to the inherited WSL console; keep the waiting host alive.
+  const interrupt = (): void => {}
+  process.on('SIGINT', interrupt)
   try {
     await runWslDistribution(name, signal)
-  } finally { ui.resume() }
+  } finally { process.off('SIGINT', interrupt); ui.resume() }
 }

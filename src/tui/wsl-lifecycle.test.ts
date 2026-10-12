@@ -69,3 +69,17 @@ it('shows the empty distribution state without launching a process', async () =>
   expect(ui.view).toHaveBeenCalledWith('WSL', expect.stringContaining('尚未安装'))
   expect(spawn).not.toHaveBeenCalled()
 })
+
+it('keeps the waiting host alive on console Ctrl+C and restores its signal handler after WSL exits', async () => {
+  const original = process.listenerCount('SIGINT')
+  const ui = { busy: (_title: string, result: Promise<unknown>) => result, menu: vi.fn().mockResolvedValue('Ubuntu'), suspend: vi.fn(), resume: vi.fn() }
+  const running = showWsl(ui as unknown as TerminalUI)
+  await vi.waitFor(() => expect(spawn).toHaveBeenCalled())
+  expect(process.listenerCount('SIGINT')).toBe(original + 1)
+  process.emit('SIGINT')
+  expect(child.kill).not.toHaveBeenCalled()
+  child.emit('close', 0)
+  await running
+  expect(process.listenerCount('SIGINT')).toBe(original)
+  expect(ui.resume).toHaveBeenCalledOnce()
+})

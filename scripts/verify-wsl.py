@@ -7,6 +7,7 @@ import json
 import base64
 import tempfile
 import shutil
+import re
 from pathlib import Path
 from terminal_process import TerminalProcess
 
@@ -19,6 +20,9 @@ root = Path(__file__).resolve().parent.parent
 wsl = str(Path(os.environ['SystemRoot']) / 'System32' / 'wsl.exe')
 probe = subprocess.run([wsl, '--distribution', distro, '--exec', '/bin/echo', 'WSL_READY'], capture_output=True, timeout=30)
 assert probe.returncode == 0 and b'WSL_READY' in probe.stdout, 'Real WSL distribution must start'
+listing = subprocess.run([wsl, '--list', '--quiet'], capture_output=True, check=True, timeout=30).stdout
+names = list(dict.fromkeys(name.strip() for name in listing.decode('utf16le' if b'\x00' in listing else 'utf8').replace('\ufeff', '').splitlines() if name.strip()))
+assert distro in names, 'Requested distribution must be present in the real WSL list'
 node = shutil.which(sys.argv[1]) or sys.argv[1]
 command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else [node, str(root / 'out/tui/myssh.cjs'), '--wsl']
 with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
@@ -40,11 +44,12 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
             reader.stdin.flush()
             screen = json.loads(reader.stdout.readline())
 
-    def expect(text, timeout=30):
+    def expect(text, timeout=30, pattern=False):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             read()
-            if text.encode() in output[position:] or text in screen:
+            matches = bool(re.search(text, screen, re.MULTILINE)) if pattern else text.encode() in output[position:] or text in screen
+            if matches:
                 return
         raise AssertionError('WSL expected ' + repr(text) + ': ' + output[-1600:].decode(errors='replace'))
 
@@ -56,13 +61,19 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
 
     try:
         expect('WSL · 输入 exit 返回 MySSH')
-        # Select the requested installed distribution through the menu's search UI.
-        send('/' + distro)
+        # Use the actual WSL list order, then wait for the selected row and Linux prompt.
+        if names.index(distro):
+            send('\x1b[B' * names.index(distro))
         expect('› ' + distro)
         send('\r')
-        time.sleep(0.3)
+        expect(r'[$#] *$', pattern=True)
         send("printf '%s%s\\n' 'WSL_' 'OK_你好'\r")
         expect('WSL_OK_你好')  # Marker isn't present verbatim in the echoed input.
+        send('sleep 30\r')
+        time.sleep(0.3)
+        send('\x03')
+        send("printf '%s%s\\n' 'CTRL_' 'RETURN_OK'\r")
+        expect('CTRL_RETURN_OK')
         send('exit\r')
         deadline = time.monotonic() + 15
         while terminal.poll() is None and time.monotonic() < deadline:
@@ -71,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
         target = root / '.dev' / 'wsl-acceptance'
         target.mkdir(parents=True, exist_ok=True)
         (target / ('standalone.ansi' if len(sys.argv) > 2 else 'node.ansi')).write_bytes(output)
-        print('REAL_WSL_OK: installed Linux distribution, ConPTY handoff, Unicode command, exit and host restoration.')
+        print('REAL_WSL_OK: installed Linux distribution, ConPTY handoff, Unicode command, Ctrl+C continuation, exit and host restoration.')
     finally:
         terminal.close()
         reader.stdin.close()

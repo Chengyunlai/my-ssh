@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 真实 Vim/tmux 经 SSH | `npm run verify:tui-terminal` | `REAL_TERMINAL_OK`；Vim 修改的 UTF-8 文件、tmux 中的实际会话探针、菜单恢复 |
 | 三平台独立程序 | `MYSSH_VERIFY_REAL_TERMINAL=1 npm run verify:tui-portable`（Unix） | 应用 PATH 无 Node，预览/SSH/SFTP/插件通过，再运行 Vim/tmux |
-| Windows 已安装的测试 WSL | PowerShell：`$env:MYSSH_TEST_WSL_DISTRO='发行版名'; python scripts/verify-wsl.py node` | `REAL_WSL_OK`；真实 Linux 进程、中文命令结果、exit/终端恢复 |
+| Windows 已安装的测试 WSL | PowerShell：`$env:MYSSH_TEST_WSL_DISTRO='发行版名'; python scripts/verify-wsl.py node` | `REAL_WSL_OK`；真实 Linux 进程、中文命令结果、Ctrl+C 中断后继续输入、exit/终端恢复 |
 | Windows 单文件 WSL | `python scripts/verify-wsl.py node C:\path\to\myssh.exe` | 同一交接链，应用 PATH 无 Node |
 
 CI 的 `setup-ci-wsl.ps1` 只允许 GitHub Windows runner；使用 SHA-256 固定的 Alpine 3.23.6 rootfs，

@@ -3,7 +3,7 @@
 关联 [Issue #35](https://github.com/Chengyunlai/my-ssh/issues/35)，[设计](../plans/tui-compatibility.md)。
 基线 `46da5ffca47c237ead0877659c48e27e872097b3`，分支 `codex/feat/tui-compatibility`，开始时干净。
 修复提交 `b521b51`；功能提交 `e3afd44`，记录提交不自引用。
-本阶段准备 1.6.0；合入/发行状态以 PR 与公开 Release 为准，不把本地构建算作已公开发布。
+本阶段准备 1.6.0；合入/发行状态以 [PR #36](https://github.com/Chengyunlai/my-ssh/pull/36) 与 [Release](https://github.com/Chengyunlai/my-ssh/releases/tag/v1.6.0) 为准，不把本地构建算作已公开发布。
 
 ## 用户可见行为与改动
 
@@ -23,7 +23,7 @@
 
 ## 本地验证
 
-- `make check`：lint、两侧类型、40 文件 / 306 测试、桌面/TUI 构建通过。
+- `make check`：lint、两侧类型、40 文件 / 307 测试、桌面/TUI 构建通过。
 - 独立 tgz：Core/MySQL/插件 CJS/ESM 与严格 TypeScript 类型消费，真实回环 SSH/MySQL，CLI 校验与自建市场安装通过。
 - `npm run verify:tui-plugins`：真实键盘的第三方命令/安装启停/数据库/CSV/参数化修改/实时监控链通过。
 - `node scripts/verify-tui-terminal.mjs`：真实 Unix PTY 的 Vim/tmux，经 SSH 的全屏、中文逐字节输入、返回与恢复通过；Vim 的实际 UTF-8 文件再次核对。
@@ -38,7 +38,9 @@
 
 ## 远端与剩余条件
 
-Windows CI 的 WSL1 临时发行版与 ConPTY 源码/单文件链，以及三平台最终 CI，提交后核对真实结果；未通过前不声明验收。
+Windows WSL1 的 ConPTY 源码/单文件链和三平台最终 CI 作为 PR #36 / Release 的门禁，公开状态与报告以该 PR/Release 为准。
+首次 CI 的 Linux/macOS/数据库通过，Windows 真实发行版启动通过；验收先补全 ConPTY 所需的 Node 绝对路径，再以选中行及实际 Linux 提示符同步交接，避免命令提前被菜单输入消耗。
+WSL 的 Ctrl+C 中断后继续输入也进入真实链，等待的宿主临时保护 SIGINT，退出时恢复。
 WSL 根文件系统来自 Alpine 3.23.6 的公开 x64 rootfs，SHA-256 固定，仅在 GitHub runner 导入按唯一名字清理。
 实际远端程序在临时目录运行，不读取现有 shell/vim/tmux 配置，不连接业务服务器。
 
