@@ -50,10 +50,14 @@ macOS/Linux 使用 Unix PTY。断点：`terminal_process.py::WindowsTerminal` �
 
 ## 发布状态与边界
 
-版本准备为 1.4.0，尚未打 tag、发布或合入。远程保护要求 CI、CODEOWNER 批准和最后推送审批。
-当前 PR 作者和 CODEOWNER 同为 `Chengyunlai`，GitHub 不允许作者自审；需要维护者完成符合门禁的
-审批，或明确授权本次管理员合入例外。不修改保护规则，不在未授权时跳过批准。
-合入后推送 `v1.4.0`，Release 工作流生成桌面三平台资产及平台无关 TUI tgz。
+远程保护要求 CI、CODEOWNER 批准和最后推送审批。当前 PR 作者和 CODEOWNER 同为
+`Chengyunlai`，GitHub 不允许作者自审。用户于 2026-10-12 明确授权仅本次管理员合入并发布
+1.4.0；仓库保护规则保持不变，最终提交仍须通过三平台 CI。
+
+发布链路：合入主分支 → 推送 `v1.4.0` → Release 工作流汇总桌面三平台资产及平台无关 TUI tgz
+→ 校验精确 11 文件资产合同 → 发布。实际合入与发布状态以
+[PR #28](https://github.com/Chengyunlai/my-ssh/pull/28) 和
+[Release v1.4.0](https://github.com/Chengyunlai/my-ssh/releases/tag/v1.4.0) 为准。
 
 仍需 Node.js；外部 React 插件未适配；媒体/Office/PDF 下载后本地查看；桌面 vault 不自动迁移。
 Windows Terminal 的 IME/字体及不同终端的复杂远端应用体验不等于自动测试的验收范围。
