@@ -44,7 +44,7 @@ TuiApp.commands、showLiveMonitor。MySQL packet writer 只在合成服务中，
 
 ## 本地验证
 
-- `make check`：lint/Node+web 类型/测试/桌面与 TUI 构建通过；34 文件 / 284 测试通过。
+- `make check`：lint/Node+web 类型/测试/桌面与 TUI 构建通过；34 文件 / 285 测试通过。
 - `npm run example:mysql`：真实回环 TCP，输出 MYSQL_OK 你好。
 - `npm run verify:tui-plugins` 及 MYSSH_VERIFY_SCREEN=1：市场安装/启停/卸载、加密 DB 连接/历史、
   库表结构、SQL/CSV、服务器参数化行修改、命令发送、实时监控通过。
@@ -74,3 +74,5 @@ Mermaid 见设计记录，D0，未连接 draw.io；新插件合同与示例导�
 首次主仓库 [CI 38211693754](https://github.com/Chengyunlai/my-ssh/actions/runs/38211693754)：
 三平台全部键盘/独立包/单文件链路通过；真实 MySQL 的建库返回 OK 状态包，驱动 fields 为 undefined，
 暴露了查询处理遗漏无列结果。已允许空列并添加 wire-protocol DO/OK 回归，修正后重新验收。
+
+CSV 对全角/空白/换行前缀也检查，使用引号内制表符保护电子表格查看；程序导入须保留该格式差异。

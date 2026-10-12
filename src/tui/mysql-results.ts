@@ -3,7 +3,9 @@ import type { MysqlQueryResult } from '../core/mysql'
 export function csvResult(result: MysqlQueryResult): string {
   const cell = (value: string | null): string => {
     let text = value ?? ''
-    if (/^[=+@\t\r-]/.test(text) && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) text = "'" + text
+    const normalized = text.normalize('NFKC').trimStart()
+    const numeric = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(normalized)
+    if (/^[\t\r\n]/.test(text) || /^[=+@-]/.test(normalized) && !numeric) text = '\t' + text
     return '"' + text.replaceAll('"', '""') + '"'
   }
   return [result.columns, ...result.rows].map((row) => row.map(cell).join(',')).join('\r\n') + '\r\n'

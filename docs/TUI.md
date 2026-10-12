@@ -135,3 +135,7 @@ CSV 只导出当前结果，危险公式前缀转为文字；SQL 编辑高亮与
 
 公开数据库 API：`myssh-tui/mysql` 的 MysqlSession.connect/query/executeMutation/close。
 `npm run example:mysql` 提供最短公共调用；`npm run verify:tui-plugins` 验证市场与真实键盘链路。
+
+CSV 面向电子表格查看：对空白/全角公式前缀也做检查，危险字段在引号内增加制表符，
+其它内容保持原值；程序导入时要计入该保护字符。此处理不保证所有表格软件反复保存后的行为，
+依据见 [OWASP CSV Injection](https://community.owasp.org/attacks/CSV_Injection)。
