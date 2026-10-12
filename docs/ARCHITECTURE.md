@@ -127,3 +127,5 @@ Core 的 `sftp.read(..., {rawBinary:true})` 为可信 Node 宿主提供最多 5 
 `CwdOutput` 仅处理 OSC 7，接受 BEL/ST 并限制未结束片段；其他 OSC 原样转发，以便 tmux 等应用与真实终端协商。
 用户首次输入时结束初始化回显过滤。TUI 输入通过 StringDecoder 拼接分块 UTF-8，Shell framebuffer 仍归宿主。
 真实 Vim/tmux 与 WSL 的自动链及人工字体/IME 条件见 [验收表](TUI-ACCEPTANCE.md)。
+
+WSL 在继承控制台期间保留当前替代屏幕，输入暂停等到 OS readStop 完成后启动子进程；退出恢复输入/监听器，应用最终退出才离开该屏幕。

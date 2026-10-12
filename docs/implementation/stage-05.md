@@ -47,3 +47,10 @@ WSL 根文件系统来自 Alpine 3.23.6 的公开 x64 rootfs，SHA-256 固定，
 未提供具体第三方源码，故当前交付通用接入链和示例，不宣称适配所有 React 业务。
 Office 精确排版/动画/图片、HEIC/HEIF 等仍通过下载；真实 WSL2、字体/IME/组合字符需本机人工验收。
 有限自动范围与人工检查分别见 [验收表](../TUI-ACCEPTANCE.md)，不得以自动文字断言替代实际观察。
+
+
+Windows 修正后的 [CI 38236526343](https://github.com/Chengyunlai/my-ssh/actions/runs/38236526343) 在 `d165dcd` 上全部通过：
+三平台 307 测试/独立包/交互/单文件、真实 MySQL，以及独立源码宿主和完整 CLI/单文件的实际 WSL1。
+WSL 交接保留当前控制台屏幕，只暂停输入并清理画面；子进程退出后继续该屏幕，最终退出应用才恢复原终端。
+真实中文、Ctrl+C 中断后继续输入、exit 与宿主恢复均输出 REAL_WSL_OK。临时差异探针和源码 monkeypatch 已从验收移除，
+失败时仍保存帧/状态/CLI 错误，完整 CLI/SEA 的断言保持不变。最终状态以 PR #36 / Release v1.6.0 为准。

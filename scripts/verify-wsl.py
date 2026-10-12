@@ -28,42 +28,6 @@ command = [sys.argv[2], '--wsl'] if len(sys.argv) > 2 else None
 target = root / '.dev' / 'wsl-acceptance'
 target.mkdir(parents=True, exist_ok=True)
 
-if os.environ.get('GITHUB_ACTIONS') == 'true' and len(sys.argv) == 2:
-    with tempfile.TemporaryDirectory(prefix='myssh-wsl-probes-') as directory:
-        for case in ['direct', 'inherit', 'paused', 'alternate', 'listed', 'signal', 'keypress']:
-            if case == 'direct':
-                probe_command = [wsl, '--distribution', distro]
-            else:
-                script = Path(directory, case + '.cjs')
-                setup = 'process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setRawMode(false);process.stdin.pause();' if case in ['paused', 'alternate'] else ''
-                if case == 'alternate':
-                    setup += "process.stdout.write('\\x1b[?1049h\\x1b[?1049l');"
-                if case == 'signal':
-                    setup += "process.on('SIGINT',()=>{});"
-                launch = "const c=require('node:child_process').spawn(" + json.dumps(wsl) + ",['--distribution'," + json.dumps(distro) + "],{stdio:'inherit',shell:false});c.on('close',code=>process.exitCode=code??1);"
-                if case == 'listed':
-                    launch = "require('node:child_process').execFile(" + json.dumps(wsl) + ",['--list','--quiet'],{encoding:'buffer',windowsHide:true},()=>{" + launch + "});"
-                if case == 'keypress':
-                    launch = "require('node:readline').emitKeypressEvents(process.stdin);process.stdin.setRawMode(true);process.stdin.resume();process.stdin.once('keypress',()=>{process.stdin.setRawMode(false);process.stdin.pause();setImmediate(()=>{" + launch + "})});"
-                script.write_text(setup + launch, encoding='utf8')
-                probe_command = [node, str(script)]
-            probe_terminal = TerminalProcess(probe_command, directory, os.environ)
-            transcript = bytearray()
-            try:
-                time.sleep(0.5)
-                if case == 'keypress':
-                    probe_terminal.write(b'\r')
-                    time.sleep(0.5)
-                probe_terminal.write(b"printf '%s%s\\n' 'DIRECT_' 'OK'\r")
-                deadline = time.monotonic() + 8
-                while time.monotonic() < deadline:
-                    transcript.extend(probe_terminal.read(0.05))
-                    if b'DIRECT_OK' in transcript or probe_terminal.poll() is not None:
-                        break
-                print('WSL console probe:', case, 'marker=', b'DIRECT_OK' in transcript, 'exit=', probe_terminal.poll())
-            finally:
-                (target / (case + '.ansi')).write_bytes(transcript)
-                probe_terminal.close()
 with tempfile.TemporaryDirectory(prefix='myssh-wsl-verify-') as directory:
     if command is None:
         wrapper = Path(directory, 'cli.cjs')

@@ -192,6 +192,7 @@ export class TerminalUI {
     finally { cancel() }
   }
 
+  /** Console children such as WSL can retain the buffer that owns their inherited handles. */
   suspend(retainScreen = false): void {
     process.stdin.setRawMode(false)
     process.stdin.pause()

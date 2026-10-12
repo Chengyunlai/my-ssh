@@ -151,7 +151,7 @@ CSV 面向电子表格查看：对空白/全角公式前缀也做检查，危险
 PPTX 只读取包内 presentation 关系指定的幻灯片文字/表格，不读取外链、嵌入对象或宏。
 DOCX 不保证精确的页码、字体或图片排版；XML 实际解压上限 2 MiB/条，禁止 DTD，深度最多 128。
 
-Windows 可直接运行 `myssh --wsl` 验证实际发行版，不需要先安装插件或设置 vault；Ctrl+C 交给 Linux 命令，退出发行版会恢复宿主终端。
+Windows 可直接运行 `myssh --wsl` 验证实际发行版，不需要先安装插件或设置 vault；Ctrl+C 交给 Linux 命令，退出发行版会恢复宿主终端；交接期间沿用当前屏幕，应用退出时恢复原终端。
 源码验收：设置 `MYSSH_TEST_WSL_DISTRO` 为本机已安装的测试发行版，运行 `python scripts/verify-wsl.py node`。
 脚本不安装或删除本机发行版；CI 使用已启用 WSL1 的 Windows runner，导入独立 Alpine 测试发行版并清理。
 Windows WSL2 和字体/IME 的人工观察不由 ConPTY 的文字断言替代，见 [验收表](TUI-ACCEPTANCE.md)。
