@@ -81,3 +81,6 @@ CSV 对全角/空白/换行前缀也检查，使用引号内制表符保护电�
 三平台 285 测试、独立安装、PTY/ConPTY 与单文件全部交互链，真实 MySQL 8.4 CRUD/SQL 模式/NULL/上限/重连。
 Windows 曾在快速合并的 Arrow+Enter 输入时遗漏编辑器选择；测试改为确认选中状态后再 Enter，以同步实际 ConPTY 屏幕。
 最终交付：[PR #34](https://github.com/Chengyunlai/my-ssh/pull/34) / [Release v1.5.0](https://github.com/Chengyunlai/my-ssh/releases/tag/v1.5.0)。
+
+发行打包复查发现 `out/sea/` 的生成 blob 也会命中桌面 `out/**` 清单；
+已显式排除该目录，避免把免 Node 运行时再次塞进 Electron 包，单文件程序仍独立发布。

@@ -6,6 +6,7 @@ directories:
 files:
   - out/**
   - "!out/tui/**"
+  - "!out/sea/**"
   - package.json
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 mac:
