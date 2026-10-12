@@ -199,7 +199,7 @@ with tempfile.TemporaryDirectory(prefix='myssh plugins verify ') as directory:
         choose('终端插件')
         expect('Commands fixture')
         open_plugin('Commands fixture')
-        expect('Synthetic SSH echo')
+        expect('示例服务回显')
         send('\r')
         expect('hello')
         send('\r')

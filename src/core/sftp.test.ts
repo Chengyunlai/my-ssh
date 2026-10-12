@@ -32,8 +32,8 @@ interface FakeSftp {
   setstat: ReturnType<typeof vi.fn>
 }
 
-function createWebContents(): { isDisposed: () => boolean; send: ReturnType<typeof vi.fn> } {
-  return { isDisposed: () => false, send: vi.fn() }
+function createWebContents(): { isDisposed: () => boolean; send: ReturnType<typeof vi.fn>; onDispose: () => () => void } {
+  return { isDisposed: () => false, send: vi.fn(), onDispose: () => () => {} }
 }
 
 function setupSftp(): FakeSftp {
@@ -66,9 +66,26 @@ afterEach(() => {
   closeSftp('transfer-test')
   closeSftp('sftp-timeout-test')
   closeSftp('sftp-stream-timeout-test')
+  closeSftp('raw-preview-test')
   getClient.mockReset()
   whenReady.mockReset().mockResolvedValue(undefined)
   vi.useRealTimers()
+})
+
+it('provides bounded raw bytes to a trusted host without reusing or contaminating the desktop preview cache', async () => {
+  const sftp = setupSftp()
+  const bytes = Buffer.from([80, 75, 0, 1])
+  sftp.stat.mockImplementation((_path: string, callback: (err: null, value: { size: number; mtime: number }) => void) => callback(null, { size: bytes.length, mtime: 1 }))
+  sftp.createReadStream.mockImplementation(() => Readable.from([bytes]))
+  const host = { isDisposed: () => false, onDispose: () => () => {}, send: () => {} }
+  const first = await read('raw-preview-test', '/demo.pptx', host)
+  expect(first.kind).toBe('binary')
+  expect(first.bytes).toBeUndefined()
+  const raw = await read('raw-preview-test', '/demo.pptx', host, { rawBinary: true })
+  expect(Buffer.from(raw.bytes!)).toEqual(bytes)
+  const again = await read('raw-preview-test', '/demo.pptx', host)
+  expect(again.bytes).toBeUndefined()
+  expect(sftp.createReadStream).toHaveBeenCalledTimes(2)
 })
 
 describe('SFTP preview timeouts', () => {

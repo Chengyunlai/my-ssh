@@ -22,6 +22,7 @@ try {
   assert.match(execFileSync(binary, ['--help'], options), /--preview/)
   await previewFixtures(directory)
   execFileSync(process.platform === 'win32' ? 'python' : 'python3', ['scripts/verify-preview.py', binary, directory, process.execPath], { stdio: 'inherit', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1' } })
+  if (process.platform === 'win32' && process.env.MYSSH_TEST_WSL_DISTRO) execFileSync('python', ['scripts/verify-wsl.py', process.execPath, binary], { stdio: 'inherit', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', PYTHONUTF8: '1' } })
   const tty = spawn(binary, [], { cwd: directory, env: options.env })
   let error = ''
   tty.stderr.on('data', (data) => { error += data })
@@ -42,5 +43,6 @@ try {
     child.once('error', reject)
     child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`Standalone plugin verification exited ${code}`)))
   })
+  if (process.env.MYSSH_VERIFY_REAL_TERMINAL === '1') execFileSync(process.execPath, ['scripts/verify-tui-terminal.mjs', binary], { stdio: 'inherit' })
   console.log('Standalone executable verified with no node/npm on PATH, outside the source checkout.')
 } finally { fs.rmSync(directory, { recursive: true, force: true }) }

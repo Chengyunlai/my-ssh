@@ -1,6 +1,6 @@
 {
   "name": "my-ssh",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "开源桌面 SSH 客户端:账户密码 / PEM 私钥配置,内置桌面终端",
   "main": "out/main/index.js",
   "license": "MIT",
@@ -25,7 +25,9 @@
     "pack:tui-portable": "npm run build:tui && node scripts/build-tui-portable.mjs",
     "verify:tui-portable": "npm run pack:tui-portable && node scripts/verify-tui-portable.mjs",
     "example:mysql": "npm run build:tui && node scripts/run-mysql-example.mjs",
-    "verify:tui-plugins": "npm run build:tui && node scripts/verify-tui-plugins.mjs"
+    "verify:tui-plugins": "npm run build:tui && node scripts/verify-tui-plugins.mjs",
+    "example:tui-plugin": "npm run build:tui && node examples/stage-05-tui-compatibility/user_code/main.mjs",
+    "verify:tui-terminal": "npm run build:tui && node scripts/verify-tui-terminal.mjs"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -64,12 +66,14 @@
     "@types/ssh2": "^1.15.5",
     "@types/utif": "^3.0.6",
     "@vitejs/plugin-react": "^5.2.0",
+    "@xmldom/xmldom": "^0.9.12",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/headless": "^6.0.0",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "image-size": "^2.0.4",
+    "jszip": "^3.10.1",
     "mysql2": "^3.24.5",
     "oxlint": "^1.79.0",
     "pdfjs-dist": "^6.4.299",

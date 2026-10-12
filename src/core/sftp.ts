@@ -220,7 +220,7 @@ export function read(
   sessionId: string,
   remotePath: string,
   host: CoreHost,
-  options: { decodeImage?: (buffer: Buffer) => string | undefined; fresh?: boolean } = {}
+  options: { decodeImage?: (buffer: Buffer) => string | undefined; fresh?: boolean; rawBinary?: boolean } = {}
 ): Promise<SftpReadResult> {
   let cancelled = false
   let cancelActiveRead: (() => void) | undefined
@@ -243,7 +243,7 @@ export function read(
           const size = st.size ?? 0
           const mtime = st.mtime ?? 0
           const key = cacheKey(sessionId, remotePath)
-          const cached = options.fresh ? undefined : previewCacheGet(key, size, mtime)
+          const cached = options.fresh || options.rawBinary ? undefined : previewCacheGet(key, size, mtime)
           if (cached) {
             sendProgress(100)
             resolve(cached)
@@ -251,7 +251,7 @@ export function read(
           }
           const ext = extOf(remotePath)
           const limit =
-            DOC_EXTS.has(ext)
+            options.rawBinary ? MAX_PREVIEW_BYTES : DOC_EXTS.has(ext)
               ? MAX_OFFICE_BYTES
               : ext === 'pdf' || IMAGE_MIME[ext]
                 ? MAX_DOC_BYTES
@@ -259,7 +259,7 @@ export function read(
           const truncated = size > limit
           const readTarget = Math.max(truncated ? limit : size, 1)
           const done = (result: SftpReadResult): void => {
-            previewCacheSet(key, size, mtime, result)
+            if (!options.rawBinary) previewCacheSet(key, size, mtime, result)
             resolve(result)
           }
           const readFile = (): Promise<Buffer> =>
@@ -322,6 +322,7 @@ export function read(
           readFile()
             .then((buf) => {
               if (cancelled) return
+              if (options.rawBinary) { done({ kind: 'binary', bytes: new Uint8Array(buf), size, truncated }); return }
               const mime = IMAGE_MIME[ext]
               if (mime) {
                 let dataUrl = `data:${mime};base64,${buf.toString('base64')}`

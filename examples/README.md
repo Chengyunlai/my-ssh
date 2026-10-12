@@ -17,3 +17,7 @@
 [stage-04-tui-plugins](stage-04-tui-plugins/README.md)：先 `npm run example:mysql`，看到
 `MYSQL_OK 你好`；公共 Node MySQL 核心、声明式终端市场与官方适配，见
 [stage-04](../docs/implementation/stage-04.md)。
+
+[stage-05-tui-compatibility](stage-05-tui-compatibility/README.md)：`npm run example:tui-plugin`，
+公开插件合同 → 描述/hash → 自建市场安装；扩展文档预览、真实 Vim/tmux/WSL 验收，
+见 [stage-05](../docs/implementation/stage-05.md)。

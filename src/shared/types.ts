@@ -79,7 +79,7 @@ export interface SftpReadResult {
   content?: string
   /** kind = image / pdf 时的 data URL */
   dataUrl?: string
-  /** kind = office 时的原始字节(docx / xlsx / xls / doc) */
+  /** Office 原始字节；可信 Node Core 调用 rawBinary 时也可用于 binary，桌面 IPC 不开放该选项。 */
   bytes?: Uint8Array
   size: number
   truncated: boolean

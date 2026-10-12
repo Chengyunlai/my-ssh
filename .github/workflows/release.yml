@@ -61,8 +61,19 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: npm pack ./out/tui --pack-destination dist
 
+      - name: Install real fullscreen terminal fixtures
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y vim tmux
+
+      - name: Create disposable real WSL distribution
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/setup-ci-wsl.ps1
+
       - name: Build and verify single executable TUI
         run: npm run verify:tui-portable
+        env:
+          MYSSH_VERIFY_REAL_TERMINAL: ${{ runner.os == 'Linux' && '1' || '0' }}
 
       - name: Rebuild macOS icon assets (100% opaque)
         if: matrix.os == 'macos-latest'
@@ -88,6 +99,11 @@ jobs:
             dist/myssh-tui-*-darwin-arm64*
             dist/myssh-tui-*-linux-x64*
             dist/myssh-tui-*-win32-x64*
+
+      - name: Remove only the CI-owned WSL distribution
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/cleanup-ci-wsl.ps1
 
   publish:
     name: Validate & Publish Release

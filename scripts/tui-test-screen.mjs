@@ -3,6 +3,8 @@ import { createInterface } from 'node:readline'
 import xterm from '@xterm/headless'
 
 const terminal = new xterm.Terminal({ cols: 110, rows: 30, scrollback: 0, allowProposedApi: true })
+let responses = ''
+terminal.onData((data) => { responses += data })
 for await (const line of createInterface({ input: process.stdin, crlfDelay: Infinity })) {
   await new Promise((resolve) => terminal.write(Buffer.from(line, 'base64'), resolve))
   const buffer = terminal.buffer.active
@@ -12,6 +14,7 @@ for await (const line of createInterface({ input: process.stdin, crlfDelay: Infi
     const cell = buffer.getLine(buffer.viewportY + y)?.getCell(x)
     return cell?.getChars() === '▀' && cell.isFgRGB()
   }).some(Boolean))
-  process.stdout.write(JSON.stringify(process.argv.includes('--colors') ? { text, coloredBlock } : text) + '\n')
+  process.stdout.write(JSON.stringify(process.argv.includes('--responses') ? { text, responses } : process.argv.includes('--colors') ? { text, coloredBlock } : text) + '\n')
+  responses = ''
 }
 terminal.dispose()

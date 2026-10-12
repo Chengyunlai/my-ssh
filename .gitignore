@@ -4,5 +4,6 @@ dist/
 .DS_Store
 *.log
 *.tsbuildinfo
+__pycache__/
 
 .dev/

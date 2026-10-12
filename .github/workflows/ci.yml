@@ -48,6 +48,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Create disposable real WSL distribution
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/setup-ci-wsl.ps1
+
+      - name: Real WSL terminal handoff
+        if: runner.os == 'Windows'
+        run: python scripts/verify-wsl.py node
+
       - name: TUI entrypoint smoke
         run: node out/tui/myssh.cjs --help
 
@@ -60,11 +69,26 @@ jobs:
       - name: Terminal plugin market and database interaction
         run: node scripts/verify-tui-plugins.mjs
 
+      - name: Install real fullscreen terminal fixtures
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y vim tmux
+
+      - name: Real SSH Vim and tmux interaction
+        if: runner.os == 'Linux'
+        run: node scripts/verify-tui-terminal.mjs
+
       - name: Single executable without Node on PATH
         run: npm run verify:tui-portable
+        env:
+          MYSSH_VERIFY_REAL_TERMINAL: ${{ runner.os == 'Linux' && '1' || '0' }}
 
       - name: Block high or critical production vulnerabilities
         run: npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
+
+      - name: Remove only the CI-owned WSL distribution
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/cleanup-ci-wsl.ps1
 
   verify-mysql:
     name: Real MySQL integration

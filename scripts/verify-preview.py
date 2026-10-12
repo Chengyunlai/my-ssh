@@ -46,7 +46,7 @@ def check(extension, label, text=None, second=None):
 
     try:
         expect(label)
-        if extension in ('png', 'pdf'):
+        if extension in ('png', 'pdf', 'ico', 'tiff'):
             if screen_reader:
                 assert screen['coloredBlock'], 'Expected rendered RGB pixel cells'
             else:
@@ -55,8 +55,11 @@ def check(extension, label, text=None, second=None):
         destination = root / '.dev' / 'tui-preview'
         destination.mkdir(parents=True, exist_ok=True)
         (destination / (extension + '.ansi')).write_bytes(output)
-        if extension in ('docx', 'xlsx'):
+        if extension in ('docx', 'xlsx', 'pptx'):
             expect(text)
+        if extension == 'docx':
+            expect('# DOCXfixture')
+            expect('TABLEfirst | TABLEsecond')
         send('\r')
         expect('返回文件列表')
         if extension == 'pdf':
@@ -68,7 +71,7 @@ def check(extension, label, text=None, second=None):
             # PDF menu also includes a text action.
             send(('\x1b[B' * (2 if extension == 'pdf' else 1)) + '\r')
             expect('2/2')
-            if extension == 'xlsx':
+            if extension in ('xlsx', 'pptx'):
                 expect(second)
             send('\r')
             expect('返回文件列表')
@@ -92,7 +95,10 @@ def check(extension, label, text=None, second=None):
                 screen_reader.wait()
 
 check('png', '图片')
+check('ico', '图片')
+check('tiff', 'TIFF · 1/2', second='second frame')
 check('pdf', 'PDF · 1/2', 'PDFfixture', 'PDFsecond')
 check('xlsx', '工作表 1/2', 'SHEETfirst', 'SHEETsecond')
 check('docx', 'DOCX', 'DOCXfixture 你好')
-print('Public --preview verified: PNG pixels, PDF render/text/pages, XLSX sheets, DOCX text.')
+check('pptx', 'PPTX · 1/2', 'PPTXslide2 你好', 'PPTXslide1 你好')
+print('Public --preview verified: PNG/ICO pixels, TIFF frames, PDF render/text/pages, XLSX sheets, DOCX structure, PPTX presentation order.')
