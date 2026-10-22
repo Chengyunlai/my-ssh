@@ -1,3 +1,4 @@
+import { registerKubernetes } from './kubernetes'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, protocol, shell } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -147,6 +148,8 @@ function registerIpc(): void {
         return { ok: false, error: message }
       }
     )
+
+  registerKubernetes()
 
   ipcMain.handle('profiles:list', () => profiles.listProfiles())
   ipcMain.handle('profiles:save', (_e, profile: Profile) => profiles.saveProfile(profile))

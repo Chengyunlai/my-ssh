@@ -446,3 +446,25 @@ MySSH 1.6.0+ 的作者工具：`myssh-tui/plugin` 导出 `validateTuiPlugin` 及
 共用业务数据 → 描述校验 → 独立终端 SHA-256 → registry → 真实 CLI 安装 → 界面启用。
 现有 `tui-declarative-v1` 内容最低仍可声明 1.5.0；新增作者 API/CLI 需要作者环境安装 1.6.0+。
 示例通过第三方市场安装时没有官方徽章，安装默认停用；现有 React 组件保留在桌面，终端入口单独发布。
+
+## Kubernetes 数据库连接合同（开发中）
+
+`window.ssh.kubernetes`：`importConfig()` 由原生选择器选取可信文件；`discover(configId, context, namespace)` 读取 Service/Pod，空 namespace 表示全部（需集群级权限）；`targets()` 返回已发现的安全目标；`forward(targetId)` 等待转发就绪后返回 `{id,targetId,host,port,state}`；`forwards()` 查询通道状态；`stop(id)` 幂等关闭。
+
+目标含 configId/context/namespace/service/port/portName、数据库候选、Pod 名称/phase/ready 和 forwardable。opaque ID 由宿主验证，不接受插件传入命令、kubeconfig 内容或路径。每窗口独立拥有注册与进程，窗口销毁自动清理。最多同时申请 16 个转发；就绪前超时 20 秒；资源输出最多 8 MiB。
+
+数据库插件应保存稳定 targetId 而非临时本机端口；应用重启后可选择已保存配置并重新发现服务。MySQL 1.3.0 可选择 MySQL/unknown 目标，使用本机官方 runtime，禁止把本机通道交给自定义远程代理。Kubernetes 连接密码仅保留当前插件运行内存，保存配置时剔除；手动地址的既有存储行为保持原状。通道退出必须显式重连，不重试 SQL。旧宿主缺少该 API 时，手动数据库连接继续工作。
+
+### Pod 资源监控与容器日志
+
+发现结果的 Pod 新增 `containers: string[]`（普通业务容器名称）；`metrics(targetId,pod)` 返回容器 CPU mCPU、内存 bytes、采样时间及窗口；`logs(targetId,pod,container,{tailLines,sinceSeconds,previous})` 返回纯文本与可能达到大小上限标志。Pod/容器必须来自当前窗口已发现的目标，不允许跨 namespace 猜测资源或传入任意命令。
+
+日志行数仅 100/300/1000，时间范围仅 300/3600/86400 秒，单次最多 256 KiB，不使用 follow、不写磁盘；日志仅作为 React 文本渲染。监控和日志单窗口最多 4 个并行查询，超时 20 秒。可选 10 秒快照刷新，隐藏面板暂停，查询失败关闭自动刷新。资源用量依赖 Metrics API 权限；不可用与零用量严格区分。日志需要 pods/log，previous 只查询上一容器实例，不是历史日志平台。
+
+AppPanelProps 新增可选 active，由宿主传递面板可见状态；用于暂停后台采集，旧插件忽略该新增属性即可。
+
+### 已导入配置的记忆与清理
+
+`remembered()` 返回安全配置列表和 selectedId；`selectConfig(id)` 在当前窗口恢复对应内容并返回该配置上次的 context/namespace；`rememberSelection(id,context,namespace)` 保存选择；`removeConfig(id)` 删除单个记录，`clearConfigs()` 清空记录。两种清理均撤销相关窗口的注册、关闭转发并删除临时快照，不删除原始 kubeconfig。
+
+主进程 `kubernetes-configs.enc` 使用系统 safeStorage 加密完整的已检查、展开后的 kubeconfig 与选择，文件权限 0600、原子替换。加密不可用（含 Linux basic_text）不降级明文；损坏不覆盖，可显式清空恢复。renderer 只能接收 metadata，不接收原文、token 或路径。Core 的 snapshot export/restore 仅供可信 Node 宿主调用，恢复仍拒绝可执行认证插件。最多保存 32 个配置，总序列化内容不超过 8 MiB。

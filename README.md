@@ -259,3 +259,13 @@ https://chengyunlai.github.io/my-ssh-plug/registry.json
 阶段目标见 [设计记录](docs/plans/core-tui.md)，实际验证见
 [实现记录](docs/implementation/stage-01.md)。`examples/` 是唯一示例根目录，先看 `user_code/`，
 再按需进入 `core/` 和正式源码。
+
+## Kubernetes 数据库发现（开发中）
+
+桌面顶部独立「Kubernetes」面板，无需 SSH：导入可信 kubeconfig → 选择 context、填写有权限的命名空间 → 查看 Service/Pod → 按需建立本机回环转发。依赖本机已安装的 `kubectl`；不修改当前全局 context。
+
+MySQL 管理器 1.3.0 在连接表单提供 Kubernetes 来源，连接时申请独立转发，断开/失败时关闭；旧市场插件需要更新后才能使用该集成。手动转发也可供其他本机数据库客户端使用。PostgreSQL/Redis 当前提供发现与通道，不提供数据浏览器。
+
+第一版支持 token/证书 kubeconfig，拒绝 exec/auth-provider；导入内容通过系统加密保存在本机，重启后恢复配置、Context 和命名空间，点击「查看服务」重新发现资源。支持切换、移除及清空保存记录；清理会关闭相关通道，原始文件保留。配置变更/凭据轮换需重新导入更新。权限不足会显示错误，请明确填写允许访问的命名空间。示例与验证见 [stage-06](examples/stage-06-kubernetes/README.md)。
+
+Kubernetes 面板展开 Pod 后可进入「监控与日志」：查看 CPU/内存快照，按容器、时间范围和行数读取日志，支持本地关键词筛选与可选 10 秒刷新。指标需要 Metrics Server 和相应 RBAC 权限；无权限时显示原因。

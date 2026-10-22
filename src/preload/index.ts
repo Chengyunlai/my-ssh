@@ -30,6 +30,21 @@ async function invokeSafe<T>(channel: string, ...args: unknown[]): Promise<T> {
 
 const api: SshApi = {
   platform: process.platform,
+  kubernetes: {
+    remembered: () => invokeSafe('kubernetes:remembered'),
+    selectConfig: (id) => invokeSafe('kubernetes:select-config', id),
+    rememberSelection: (id, context, namespace) => invokeSafe('kubernetes:remember-selection', id, context, namespace),
+    removeConfig: (id) => invokeSafe('kubernetes:remove-config', id),
+    clearConfigs: () => invokeSafe('kubernetes:clear-configs'),
+    metrics: (targetId, pod) => invokeSafe('kubernetes:metrics', targetId, pod),
+    logs: (targetId, pod, container, options) => invokeSafe('kubernetes:logs', targetId, pod, container, options),
+    importConfig: () => invokeSafe('kubernetes:import'),
+    discover: (configId, context, namespace) => invokeSafe('kubernetes:discover', configId, context, namespace),
+    targets: () => invokeSafe('kubernetes:targets'),
+    forward: (targetId) => invokeSafe('kubernetes:forward', targetId),
+    forwards: () => invokeSafe('kubernetes:forwards'),
+    stop: (id) => invokeSafe('kubernetes:stop', id)
+  },
   listProfiles: () => ipcRenderer.invoke('profiles:list'),
   saveProfile: (profile) => ipcRenderer.invoke('profiles:save', profile),
   deleteProfile: (id) => ipcRenderer.invoke('profiles:delete', id),
