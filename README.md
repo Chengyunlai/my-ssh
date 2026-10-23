@@ -1,89 +1,94 @@
 <p align="center">
-  <img src="docs/logo/final/myssh-icon-256.png" width="120" height="120" alt="MySSH" />
-</p>
-
-<h1 align="center">MySSH</h1>
-
-<p align="center">开源 SSH 客户端：共用核心，Electron 桌面界面与终端交互界面(TUI)，支持账号密码 / PEM 私钥</p>
-
-<p align="center">
-  <img src="https://img.shields.io/github/license/Chengyunlai/my-ssh" alt="License" />
-  <img src="https://img.shields.io/github/v/release/Chengyunlai/my-ssh" alt="Release" />
-  <img src="https://img.shields.io/github/actions/workflow/status/Chengyunlai/my-ssh/ci.yml?branch=master" alt="CI" />
+  <img src="docs/readme/hero.svg" alt="MySSH — 连接服务器，把终端、文件与数据放在一起" width="100%" />
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS" />
-  <img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows" />
-  <img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux" />
+  <a href="https://github.com/Chengyunlai/my-ssh/releases/latest"><img src="https://img.shields.io/github/v/release/Chengyunlai/my-ssh?style=flat-square&color=61a6fb&label=release" alt="Latest release" /></a>
+  <a href="https://github.com/Chengyunlai/my-ssh/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Chengyunlai/my-ssh/ci.yml?branch=master&style=flat-square&label=checks" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Chengyunlai/my-ssh?style=flat-square&color=8f9bad" alt="MIT license" /></a>
 </p>
 
-## 产品截图
+<p align="center">
+  <a href="https://github.com/Chengyunlai/my-ssh/releases/latest"><strong>下载安装</strong></a> ·
+  <a href="#工作区里有什么">功能实景</a> ·
+  <a href="docs/TUI.md">终端版指南</a> ·
+  <a href="https://github.com/Chengyunlai/my-ssh-plug">插件市场</a> ·
+  <a href="CONTRIBUTING.md">参与开发</a>
+</p>
 
-| 连接管理 | 终端会话 |
-| --- | --- |
-| ![连接管理](docs/screenshots/01-connect-form.png) | ![终端会话](docs/screenshots/02-terminal.png) |
+MySSH 是面向开发者的开源服务器工作区。连接 SSH 后，可以在同一个应用里运行命令、处理远程文件、查看服务与监控，再通过插件进入数据库工作台。桌面与终端界面共用 SSH / SFTP 核心。
 
-| SFTP 文件传输(在线预览 / 编辑) | MySQL 数据工作区 |
-| --- | --- |
-| ![SFTP 文件传输](docs/screenshots/03-sftp-preview.png) | ![MySQL 内容、JSON 摘要与 ENUM 标签](docs/screenshots/09-mysql-workspace.png) |
+![MySSH 桌面终端](docs/screenshots/02-terminal.png)
 
-SSH/SFTP 截图使用本地虚拟演示服务。MySQL 截图使用当前插件组件与虚构的商店数据，顶部标有演示说明，不包含真实服务器、账号、业务记录或内部库表。
+## 工作区里有什么
 
-**COMMENT 逻辑关系：中文注释、自动布局、平移缩放与交互式 HTML 导出**
+| 连接与终端 | 文件与预览 | 数据与服务 |
+| --- | --- | --- |
+| 密码 / PEM 私钥认证，多服务器、多会话与独立 Shell | SFTP 上传下载、目录管理、文本在线编辑 | CPU、内存、磁盘、网络监控与服务发现 |
+| 桌面标签页与终端菜单，两种操作入口 | 图片、PDF、Office 内容预览 | MySQL 工作区、COMMENT 关系图、Kubernetes 通道 |
 
-![MySQL 逻辑关系画布](docs/screenshots/10-mysql-relations.png)
+### 远程文件，直接打开处理
 
-## 终端版本(TUI)
+浏览目录、预览内容、修改文本、传输文件。传输显示字节数与速度；支持的图片和文档可以在工作区内查看。
 
-同一份 SSH / SFTP 核心现在也可在终端中使用：连接管理、多会话 / 多 Shell、远程文件管理、
-文件预览编辑、系统监控与服务发现。无需 Electron 或图形桌面；npm 包需要 Node.js，1.5.0 同时提供自带运行时的单文件程序。
+![SFTP 文件管理与在线预览](docs/screenshots/03-sftp-preview.png)
 
-```bash
-npm ci
-npm run tui
-```
+### 数据库里的信息，读得更清楚
 
-给用户分发时可构建独立安装包（只安装 TUI/Core 与预览依赖，不下载 Electron）：
+MySQL 管理器提供库表导航、SQL 查询与分页结果。JSON 用树形详情查看，ENUM 用标签和下拉选项呈现，中文 COMMENT 与字段结构一起显示。
 
-```bash
-npm run pack:tui
-npm install -g ./dist/myssh-tui-1.6.0.tgz
-myssh
-```
+<p align="center">
+  <img src="docs/screenshots/11-mysql-enum.png" alt="MySQL 工作区中的 ENUM 标签、中文说明和可选值" width="100%" />
+</p>
 
-从 1.4.0 起，Release 工作流会附带 `myssh-tui-<版本>.tgz`。当前发布准备与验收结果见
-[实现记录](docs/implementation/stage-02.md)。
-TUI 的操作、主密码加密存储、编辑器配置与桌面差异见 [docs/TUI.md](docs/TUI.md)。
-1.5.0 增加终端图片、PDF 分页和 Office 内容预览，以及 `npm run pack:tui-portable` 免 Node 程序。
-现有 1.4.0 不包含这些新增能力。四个官方插件提供独立终端入口；第三方插件需要声明终端能力，React 页面仍供桌面使用。
-进度见 [Issue #32](https://github.com/Chengyunlai/my-ssh/issues/32)。
-可运行示例见 [stage-03](examples/stage-03-tui-portable/README.md)。
-1.6.0 扩展 DOCX 标题/列表/表格、PPTX 分页、DIB ICO 和 TIFF 多帧；第三方插件开发与验证见
-[stage-05 示例](examples/stage-05-tui-compatibility/README.md)。
+在 COMMENT 中声明逻辑关联，即可查看自动布局的关系画布。选择连线查看字段配对和说明，生成 JOIN 草稿，或导出可交互的单文件 HTML，分享结构与关系快照。
 
-| 终端会话 | SFTP 文件管理 |
-| --- | --- |
-| ![TUI 终端](docs/screenshots/05-tui-shell.png) | ![TUI 文件管理](docs/screenshots/05-tui-sftp.png) |
+<details>
+<summary><strong>查看 COMMENT 关系画布</strong></summary>
+<br />
 
-截图由本地虚拟 SSH 服务的真实 PTY 帧生成，不连接真实服务器。
+<p align="center">
+  <img src="docs/screenshots/10-mysql-relations.png" alt="使用虚构商店结构展示的 COMMENT 逻辑关系画布" width="720" />
+</p>
 
-## 桌面版安装
+关系来自显式注释声明，不创建物理外键；表级业务映射不生成 JOIN。导出不包含业务数据行、连接配置或凭据。
 
-从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases/latest) 下载对应平台的最新版安装包即可:
+</details>
 
-- macOS:`.dmg`(Apple Silicon)
-- Windows:`.exe`
-- Linux:`.AppImage`
+[了解 MySQL 管理器](https://github.com/Chengyunlai/my-ssh-plug/tree/main/src/mysql-manager) · [COMMENT 声明语法](https://github.com/Chengyunlai/my-ssh-plug/blob/main/docs/mysql-logical-relations.md)
 
-每次发布(打 `vX.Y.Z` tag)由 CI 自动打包并上传,无需自己构建。
+### 留在终端里，也能继续工作
 
-完整的版本迭代记录见 [CHANGELOG.md](CHANGELOG.md)(开发者日志)。
+TUI 提供连接管理、多 Shell、SFTP、文件预览、系统监控和终端插件。可以使用独立 npm 安装包，也可以下载自带运行时的单文件程序。
 
-### macOS 首次打开提示「已损坏,无法打开」
+![MySSH TUI 远程文件管理](docs/screenshots/05-tui-sftp.png)
 
-当前 CI 产物未做 Apple Developer 签名,下载后会被 macOS Gatekeeper 拦截,首次打开提示
-「MySSH 已损坏,无法打开」。这是未签名 + 隔离标记导致的误报,应用本身正常。安装后执行一次:
+[终端版安装与操作](docs/TUI.md)
+
+### 从集群服务进入数据库
+
+Kubernetes 面板可导入 kubeconfig、发现授权命名空间中的 Service / Pod，并建立本机回环通道。展开 Pod 可查看指标与容器日志；MySQL 插件可直接选择发现的服务作为连接来源。
+
+需要本机 `kubectl` 和对应 RBAC 权限；指标依赖 Metrics Server。当前 PostgreSQL / Redis 支持发现和通道，数据浏览使用对应客户端。
+
+[使用示例与能力边界](examples/stage-06-kubernetes/README.md)
+
+## 快速开始
+
+### 桌面版
+
+从 [GitHub Releases](https://github.com/Chengyunlai/my-ssh/releases/latest) 下载对应平台的安装包。
+
+| macOS | Windows | Linux |
+| --- | --- | --- |
+| Apple Silicon · `.dmg` | `.exe` | `.AppImage` |
+
+安装后新建服务器连接，填写地址与认证信息即可使用。Windows / Linux 可在设置中检查更新；macOS 当前使用 Releases 手动更新。
+
+<details>
+<summary>macOS 首次打开与签名说明</summary>
+
+当前安装包尚未完成 Apple Developer ID 签名和公证。首次打开可能被系统拦截；确认下载来源后，可参考以下本地处理方式：
 
 ```bash
 codesign --force --deep --sign - /Applications/MySSH.app
@@ -91,176 +96,50 @@ xattr -dr com.apple.quarantine /Applications/MySSH.app
 open /Applications/MySSH.app
 ```
 
-或右键「打开」→ 确认。待配置 Apple Developer ID 签名 + notarization 后,即可免去此步骤。
+</details>
 
-## 自动更新
+### 终端版
 
-已接入 `electron-updater`:启动时静默检查,设置页「关于 → 检查更新」可手动检查 /
-下载 / 重启安装。默认更新源为 GitHub Releases,发布流程见
-[`docs/RELEASE.md`](docs/RELEASE.md)。
-
-- 打 `vX.Y.Z` tag 或手动触发 `release` workflow,CI 自动打包并上传安装包 +
-  `latest*.yml` 更新索引
-- Windows / Linux:自动更新开箱即用
-- macOS:CI 产物未签名,暂不支持自动更新(需 Developer ID 签名),请从 Releases 手动下载
-
-## 技术栈
-
-- [Electron](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/) + TypeScript
-- [React](https://react.dev) 界面
-- [xterm.js](https://xtermjs.org/)(VS Code 同款终端渲染)+ `@xterm/addon-fit`
-- [ssh2](https://github.com/mscdex/ssh2) 连接协议(密码 / PEM 认证、通道复用)
-- 凭据加密:桌面使用 Electron `safeStorage`；TUI 使用 scrypt + AES-256-GCM 主密码 vault
-- 插件系统:内置插件(随应用分发)+ 外部插件(独立市场仓库 `my-ssh-plug` 分发,可安装 / 更新 / 卸载)
-- UI 动效与设计规范:见 [`docs/UI.md`](docs/UI.md)(基于 emilkowalski/skills 设计工程哲学)
-- 进程边界与关键数据流:见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- 产品与工程方向:见 [`ROADMAP.md`](ROADMAP.md)
-
-## 开发
+从同一 Release 下载平台对应的 `myssh-tui` 单文件程序；或下载 `.tgz` 后通过 Node.js 安装：
 
 ```bash
-make install   # 安装依赖
-make dev       # 启动开发模式
+npm install -g ./myssh-tui-1.6.0.tgz
+myssh
 ```
 
-## 常用命令
+[各平台启动方式与环境要求](docs/TUI.md#免安装单文件程序)
 
-```bash
-make lint              # 静态代码检查
-make test              # 单元测试
-make typecheck         # 类型检查(main + renderer)
-make build             # 构建到 out/
-make dist              # 本地打包 macOS dmg + zip(dist/)
-make check             # 提交前自检:lint + typecheck + test + build
-make release-patch     # 版本迭代:patch 并推送 tag,CI 自动打包发布
-make release-minor     # 版本迭代:minor 并推送 tag
-make release-major     # 版本迭代:major 并推送 tag
-```
+### 安装插件
 
-版本迭代 = `make release-*` 打 tag 推送,CI 自动构建 **macOS / Windows / Linux** 三平台产物并发布到 GitHub Releases。
-
-## 贡献
-
-欢迎提交 Issue 和 PR。开发约定、提交规范、PR 流程与发布说明见
-[`CONTRIBUTING.md`](CONTRIBUTING.md)；AI Agent / 多人并行开发遵循 [`AGENTS.md`](AGENTS.md)，
-安全问题请按 [`SECURITY.md`](SECURITY.md) 私密报告。
-
-## 目录结构
-
-```text
-Makefile          # 开发命令入口(install / dev / lint / test / typecheck / build / dist / release-*)
-LICENSE           # MIT 协议
-CHANGELOG.md      # 开发者日志:每次版本迭代的内容记录
-CONTRIBUTING.md   # 贡献指南(开发约定 / 提交规范 / 发布流程)
-AGENTS.md         # AI Agent / 多人并行开发与交接规范
-ROADMAP.md        # Now / Next / Later 路线图
-SECURITY.md       # 漏洞报告与安全开发策略
-.github/
-  ISSUE_TEMPLATE/           # Bug / Feature / 工程任务 Issue Forms
-  pull_request_template.md  # PR 验证、风险与 Review 清单
-  workflows/ci.yml          # PR / master:lint + typecheck + test + build
-  workflows/release.yml     # tag:三平台打包并发布 GitHub Releases
-src/
-  core/        # 无 Electron / DOM 依赖的 Node 核心:SSH、SFTP、监控、连接管理
-  tui/         # 终端菜单、Shell 屏幕、编辑器与独立凭据 vault
-  main/        # Electron 主进程:窗口、IPC、系统存储、插件与更新适配
-  preload/     # contextBridge 桥接,向渲染进程暴露 window.ssh API
-  renderer/    # React 界面 + xterm.js 终端
-  shared/      # 主进程与渲染进程共享的类型
-  renderer/src/plugins/  # 插件注册表(<id>/index.ts + 面板组件)
-docs/
-  ARCHITECTURE.md  # 宿主 / 核心边界、依赖方向与关键数据流
-  TUI.md       # 终端版本运行、安装与操作说明
-  adr/             # 跨模块架构决策记录
-  PLUGIN.md    # 插件开发规范
-  RELEASE.md   # 发布与自动更新规范
-  UI.md        # UI 动效与设计规范
-```
-
-## 插件系统
-
-插件分两类,互相独立维护:
-
-- **内置插件**:源码在 `src/renderer/src/plugins/<id>/`,随应用打包分发,只能禁用、不可卸载
-- **外部插件**:由独立仓库 `my-ssh-plug`(与核心仓库并列)构建发布,
-  经自定义协议 `myssh-plugin://` 运行时加载,在设置页「插件市场」安装 / 更新 / 卸载
-
-新增内置插件 = 在 `src/renderer/src/plugins/` 下新建目录并导出插件定义,无需改任何配置:
-
-```ts
-// src/renderer/src/plugins/my-plugin/index.ts
-import { definePlugin } from '../types'
-import MyPanel from './MyPanel'
-
-export default definePlugin({
-  id: 'my-plugin',
-  name: '我的插件',
-  version: '1.0.0',
-  panel: { title: '标签名', Component: MyPanel }
-})
-```
-
-- `panel.Component` 会在会话连接后出现在标签栏,收到 `{ sessionId, profile }` 属性
-- 插件只能调用 `window.ssh.*` 暴露的 API(会话、SFTP、文件对话框),无法直接访问主进程
-- 面板组件与终端同时保持挂载(终端切走不丢会话),大体积逻辑(如 SFTP 传输)应放主进程 `src/main/`,通过 IPC 暴露
-- 完整开发规范见 [`docs/PLUGIN.md`](docs/PLUGIN.md)
-
-### 内置插件
-
-- **文件传输(SFTP)** — 默认启用,可在设置页关闭
-
-### 插件市场(外部插件)
-
-左下角「⚙ 设置 → 插件市场」,填入市场清单地址(`registry.json`,支持 `https://` 与本地
-`file://`)后即可浏览并安装插件。插件默认不安装,安装后可在「插件」页启用 / 禁用,
-非内置插件支持「卸载」(禁用并删除本地数据)。
-
-当前市场仓库 `my-ssh-plug` 提供:
-
-- **命令手册**(`command-book`,默认不安装)— 终端底部的一小条命令搜索框:输入关键字
-  (如 `grep`、`压缩`)实时匹配 100 条常用命令,回车或点击复制
-- **MySQL 管理器**(`mysql-manager`,默认不安装)— 独立工作区中的 MySQL 连接、对象浏览和 SQL 查询；
-  MySSH `1.3.0+` 会按需管理其官方 Companion Runtime，无需手动启动本地代理。新版插件提供
-  中文 COMMENT、JSON 详情、ENUM 标签与下拉编辑，以及无需物理外键的逻辑关系画布和交互式 HTML 导出
-
-发布市场 = 构建 `my-ssh-plug` 后把 `dist/` 部署到任意静态地址,把 `registry.json` 的
-URL 填入设置页即可;核心与市场可独立升级。
-
-当前线上市场(由 `my-ssh-plug` 仓库 GitHub Actions 自动部署到 Pages):
+在「设置 → 插件市场」加载官方地址，选择需要的插件安装并启用：
 
 ```text
 https://chengyunlai.github.io/my-ssh-plug/registry.json
 ```
 
-## SFTP 文件传输(首个插件)
+插件独立更新。MySQL 管理器、命令手册、服务器监控和 WSL 终端的兼容要求见 [插件市场](https://github.com/Chengyunlai/my-ssh-plug)。
 
-连接后点「文件」标签:浏览远程目录、双击进入、上传/下载、新建目录、删除。
+本页展示主分支与当前插件的能力；已下载安装包的具体功能以对应 Release 说明为准。所有截图使用本地演示服务或虚构数据，不含真实业务记录和内部连接信息。
 
-文件在线预览 / 编辑(内置):
+## 为开发者保留清晰的入口
 
-- **预览**:点击「预览」或双击文件,文本按扩展名自动语法高亮(与编辑共用同一 CodeMirror 实例)、图片(支持 png/jpg/gif/webp/svg 等)可直接查看;二进制文件提示下载
-- **编辑保存**:文本文件点「编辑」进入 CodeMirror 编辑器,保存后写回远程文件并自动刷新目录
-- **安全上限**:普通文本超过 5MB 只预览前 5MB 并禁用编辑;Office 文件最多读取 10 MiB,
-  PDF/图片最多读取 20 MiB,Office 解析有 10 秒 watchdog,表格最多展示 1000 行、100 列和
-  100,000 个单元格,生成 HTML 不超过 2 MiB;超过限制时提示下载完整文件
+```bash
+make install
+make dev
+```
 
-传输使用并行分块与本地磁盘直写，提供实时字节数、速度和进度；失败时清理未完成的临时文件。实际速度取决于网络、服务器带宽和存储性能。
+提交前执行 `make check`，运行 lint、类型检查、测试与构建。
 
-## 核心与实现示例导航
+| 想做什么 | 从这里开始 |
+| --- | --- |
+| 理解核心、桌面与终端的边界 | [架构说明](docs/ARCHITECTURE.md) |
+| 运行公共 API 示例 | [示例索引](examples/README.md) |
+| 编写或接入插件 | [插件开发规范](docs/PLUGIN.md) |
+| 提交改动 | [贡献指南](CONTRIBUTING.md) · [Agent 协作规范](AGENTS.md) |
+| 了解版本与计划 | [更新记录](CHANGELOG.md) · [路线图](ROADMAP.md) |
+| 发布与更新 | [发布说明](docs/RELEASE.md) |
+| 报告安全问题 | [安全策略](SECURITY.md) |
 
-开发者先读 [AGENTS.md](AGENTS.md) → [架构](docs/ARCHITECTURE.md) →
-[examples 总索引](examples/README.md)，再运行
-[Core 公共 API 示例](examples/stage-01-core-tui/user_code/README.md)。
-阶段目标见 [设计记录](docs/plans/core-tui.md)，实际验证见
-[实现记录](docs/implementation/stage-01.md)。`examples/` 是唯一示例根目录，先看 `user_code/`，
-再按需进入 `core/` 和正式源码。
+基于 Electron、React、TypeScript、xterm.js 与 ssh2 构建。桌面凭据使用系统 `safeStorage`，TUI 使用主密码加密 vault；两端存储独立。
 
-## Kubernetes 数据库发现与监控
-
-桌面顶部独立「Kubernetes」面板，无需 SSH：导入可信 kubeconfig → 选择 context、填写有权限的命名空间 → 查看 Service/Pod → 按需建立本机回环转发。依赖本机已安装的 `kubectl`；不修改当前全局 context。
-
-MySQL 管理器 1.4.0 在连接表单提供 Kubernetes 来源，连接时申请独立转发，断开/失败时关闭；旧市场插件需要更新后才能使用该集成。手动转发也可供其他本机数据库客户端使用。PostgreSQL/Redis 当前提供发现与通道，不提供数据浏览器。
-
-第一版支持 token/证书 kubeconfig，拒绝 exec/auth-provider；导入内容通过系统加密保存在本机，重启后恢复配置、Context 和命名空间，点击「查看服务」重新发现资源。支持切换、移除及清空保存记录；清理会关闭相关通道，原始文件保留。配置变更/凭据轮换需重新导入更新。权限不足会显示错误，请明确填写允许访问的命名空间。示例与验证见 [stage-06](examples/stage-06-kubernetes/README.md)。
-
-Kubernetes 面板展开 Pod 后可进入「监控与日志」：查看 CPU/内存快照，按容器、时间范围和行数读取日志，支持本地关键词筛选与可选 10 秒刷新。指标需要 Metrics Server 和相应 RBAC 权限；无权限时显示原因。
+<p align="center"><sub>MIT License · 欢迎提交 Issue、反馈与改进。</sub></p>
