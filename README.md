@@ -24,11 +24,15 @@
 | --- | --- |
 | ![连接管理](docs/screenshots/01-connect-form.png) | ![终端会话](docs/screenshots/02-terminal.png) |
 
-| SFTP 文件传输(在线预览 / 编辑) | 插件市场 |
+| SFTP 文件传输(在线预览 / 编辑) | MySQL 数据工作区 |
 | --- | --- |
-| ![SFTP 文件传输](docs/screenshots/03-sftp-preview.png) | ![插件市场](docs/screenshots/04-plugin-market.png) |
+| ![SFTP 文件传输](docs/screenshots/03-sftp-preview.png) | ![MySQL 内容、JSON 摘要与 ENUM 标签](docs/screenshots/09-mysql-workspace.png) |
 
-截图使用本地演示服务生成(虚拟 `/srv/demo-app` 目录),仅用于展示界面,不包含任何真实服务器信息。
+SSH/SFTP 截图使用本地虚拟演示服务。MySQL 截图使用当前插件组件与虚构的商店数据，顶部标有演示说明，不包含真实服务器、账号、业务记录或内部库表。
+
+**COMMENT 逻辑关系：中文注释、自动布局、平移缩放与交互式 HTML 导出**
+
+![MySQL 逻辑关系画布](docs/screenshots/10-mysql-relations.png)
 
 ## 终端版本(TUI)
 
