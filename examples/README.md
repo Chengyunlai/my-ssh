@@ -21,3 +21,9 @@
 [stage-05-tui-compatibility](stage-05-tui-compatibility/README.md)：`npm run example:tui-plugin`，
 公开插件合同 → 描述/hash → 自建市场安装；扩展文档预览、真实 Vim/tmux/WSL 验收，
 见 [stage-05](../docs/implementation/stage-05.md)。
+
+[stage-06-kubernetes](stage-06-kubernetes/README.md)：通过公开 `myssh-tui/core::KubernetesClient` 导入 kubeconfig、发现 Service/Pod、建立回环转发并清理；桌面独立面板和数据库插件集成见实现记录。
+
+stage-06 的 `--observe` 选项验证新增 Pod metrics/logs 公共方法；日志仅输出字节数，避免示例记录业务内容。
+
+stage-06 的桌面版支持加密保存、恢复和手动清理导入的 kubeconfig；Core 的可信宿主快照 API 与 renderer 的安全列表 API 分离，见该阶段 core README。

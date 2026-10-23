@@ -1,3 +1,4 @@
+import type { KubernetesApi } from './kubernetes'
 import type { Application, ServiceRecord } from './netlist'
 import type { TuiPluginManifest } from './tui-plugin'
 
@@ -419,6 +420,7 @@ export interface InstalledPlugin {
 }
 
 export interface SshApi {
+  kubernetes: KubernetesApi
   /** 运行平台,用于渲染端适配原生窗口布局(macOS 红绿灯留白等) */
   platform: string
   listProfiles(): Promise<Profile[]>

@@ -1,3 +1,6 @@
+export type { KubernetesConfigSnapshot } from './kubernetes'
+export { KubernetesClient } from './kubernetes'
+export type { KubernetesConfig, KubernetesTarget, KubernetesForward, KubernetesPodMetrics, KubernetesLogs, KubernetesLogOptions } from '../shared/kubernetes'
 import { CoreEventHub } from './host'
 import * as ssh from './ssh'
 import * as sftp from './sftp'

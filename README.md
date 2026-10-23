@@ -216,7 +216,8 @@ export default definePlugin({
 - **命令手册**(`command-book`,默认不安装)— 终端底部的一小条命令搜索框:输入关键字
   (如 `grep`、`压缩`)实时匹配 100 条常用命令,回车或点击复制
 - **MySQL 管理器**(`mysql-manager`,默认不安装)— 独立工作区中的 MySQL 连接、对象浏览和 SQL 查询；
-  MySSH `1.3.0+` 会按需管理其官方 Companion Runtime，无需手动启动本地代理
+  MySSH `1.3.0+` 会按需管理其官方 Companion Runtime，无需手动启动本地代理。新版插件提供
+  中文 COMMENT、JSON 详情、ENUM 标签与下拉编辑，以及无需物理外键的逻辑关系画布和交互式 HTML 导出
 
 发布市场 = 构建 `my-ssh-plug` 后把 `dist/` 部署到任意静态地址,把 `registry.json` 的
 URL 填入设置页即可;核心与市场可独立升级。
@@ -239,17 +240,7 @@ https://chengyunlai.github.io/my-ssh-plug/registry.json
   PDF/图片最多读取 20 MiB,Office 解析有 10 秒 watchdog,表格最多展示 1000 行、100 列和
   100,000 个单元格,生成 HTML 不超过 2 MiB;超过限制时提示下载完整文件
 
-高性能方案(2026-08 在真实腾讯云服务器上实测 10MB):
-
-| 方式 | 下载 | 上传 |
-| --- | --- | --- |
-| ssh2 `fastGet`/`fastPut`(并发 16,32KB 分块) | 0.35 MB/s | 5.92 MB/s |
-| ssh2 流式管道 | 0.34 MB/s | 挂起(不可靠) |
-| 系统 `scp` | 0.33 MB/s | — |
-
-- 传输在主进程完成,分块并行窗口(`fastGet`/`fastPut`),避免每块数据经 IPC 往返,本地磁盘直写
-- 下载方向实测受服务器出站带宽限制(~2.8Mbps),客户端方案无差异;上传方向并行窗口已跑满
-- 实时进度(字节/速度)通过 `sftp:progress` 事件推送,失败自动清理本地/远端半成品文件
+传输使用并行分块与本地磁盘直写，提供实时字节数、速度和进度；失败时清理未完成的临时文件。实际速度取决于网络、服务器带宽和存储性能。
 
 ## 核心与实现示例导航
 
@@ -259,3 +250,13 @@ https://chengyunlai.github.io/my-ssh-plug/registry.json
 阶段目标见 [设计记录](docs/plans/core-tui.md)，实际验证见
 [实现记录](docs/implementation/stage-01.md)。`examples/` 是唯一示例根目录，先看 `user_code/`，
 再按需进入 `core/` 和正式源码。
+
+## Kubernetes 数据库发现与监控
+
+桌面顶部独立「Kubernetes」面板，无需 SSH：导入可信 kubeconfig → 选择 context、填写有权限的命名空间 → 查看 Service/Pod → 按需建立本机回环转发。依赖本机已安装的 `kubectl`；不修改当前全局 context。
+
+MySQL 管理器 1.4.0 在连接表单提供 Kubernetes 来源，连接时申请独立转发，断开/失败时关闭；旧市场插件需要更新后才能使用该集成。手动转发也可供其他本机数据库客户端使用。PostgreSQL/Redis 当前提供发现与通道，不提供数据浏览器。
+
+第一版支持 token/证书 kubeconfig，拒绝 exec/auth-provider；导入内容通过系统加密保存在本机，重启后恢复配置、Context 和命名空间，点击「查看服务」重新发现资源。支持切换、移除及清空保存记录；清理会关闭相关通道，原始文件保留。配置变更/凭据轮换需重新导入更新。权限不足会显示错误，请明确填写允许访问的命名空间。示例与验证见 [stage-06](examples/stage-06-kubernetes/README.md)。
+
+Kubernetes 面板展开 Pod 后可进入「监控与日志」：查看 CPU/内存快照，按容器、时间范围和行数读取日志，支持本地关键词筛选与可选 10 秒刷新。指标需要 Metrics Server 和相应 RBAC 权限；无权限时显示原因。

@@ -21,6 +21,7 @@ export interface PluginRuntimeContext {
 }
 
 export interface AppPanelProps {
+  active?: boolean
   /** 仅当插件清单声明 runtime 时由宿主注入；插件不能自行启动进程。 */
   runtime?: PluginRuntimeContext
 }

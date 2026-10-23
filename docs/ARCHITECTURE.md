@@ -129,3 +129,17 @@ Core 的 `sftp.read(..., {rawBinary:true})` 为可信 Node 宿主提供最多 5 
 真实 Vim/tmux 与 WSL 的自动链及人工字体/IME 条件见 [验收表](TUI-ACCEPTANCE.md)。
 
 WSL 在继承控制台期间保留当前替代屏幕，输入暂停等到 OS readStop 完成后启动子进程；退出恢复输入/监听器，应用最终退出才离开该屏幕。
+
+## Kubeconfig 集群入口
+
+`src/core/kubernetes.ts::KubernetesClient` 是独立可信 Node 宿主入口；它调用本机 kubectl，不依赖 SSH。`src/main/kubernetes.ts` 拥有文件选择和按 WebContents 隔离的客户端，`src/shared/kubernetes.ts` 定义共享合同，preload 暴露 `window.ssh.kubernetes`。
+
+导入只读展开配置并拒绝可执行认证插件；临时目录 0700、凭据快照 0600，源文件后续变化不会引入新命令，窗口销毁时删除快照并终止子进程。不向 renderer 返回 token、证书、原始 Pod 内容或 kubeconfig 路径。CLI 错误映射为固定消息，禁止凭据进入日志。
+
+资源归约按命名空间/selector 关联 Pod，镜像/名称/标签仅用于候选判断；selectorless Service 不提供转发。通道只监听 127.0.0.1，使用随机端口，生命周期归申请窗口；关闭或 Pod 退出后不重放 SQL。MySQL 插件申请自己的通道，独立于面板手动建立的通道，继续通过官方本机 Companion Runtime 使用数据库协议。
+
+桌面已接入，TUI 当前仅可由可信 Node 使用者调用公开 Core API，终端菜单未扩展。示例见 stage-06。
+
+Pod 可观测性复用 KubernetesClient 的受保护 kubeconfig 和窗口所有权。Core 校验已发现的 Pod/容器，读取单 Pod Metrics API 或有界 logs；renderer 通过新组件 KubernetesPodInspector 展示 CPU/内存与日志快照，依据 app 面板 active 状态暂停定时器。日志无持久化、无任意 exec，无权限/无 Metrics API 不返回伪零值。
+
+已导入配置现在由 `src/main/kubernetes-store.ts` 通过 Electron safeStorage 加密持久化完整内容及每配置的 context/namespace，Core 保持不依赖 Electron，仅提供可信 Node 的 exportConfig/restoreConfig/forgetConfig。恢复时重新验证认证边界并建立窗口私有临时快照；窗口退出清理运行副本，持久记录由用户手动移除。永久记录和临时快照是不同生命周期。清理按 configId 关闭所有转发，即使对应服务已在一次刷新中消失；进行中的过期查询不再返回内容。

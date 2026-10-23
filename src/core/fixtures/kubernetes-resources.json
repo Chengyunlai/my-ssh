@@ -1,0 +1,697 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-1",
+        "namespace": "namespace-1",
+        "labels": {
+          "label-1": "value-2",
+          "label-3": "value-4",
+          "label-5": "value-6",
+          "label-7": "value-8"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-1": "value-2",
+          "label-5": "value-6"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 3001,
+            "protocol": "TCP",
+            "targetPort": "http"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-2",
+        "namespace": "namespace-2",
+        "labels": {
+          "label-3": "value-4",
+          "label-9": "value-10"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-11": "value-12"
+        },
+        "ports": []
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-3",
+        "namespace": "namespace-3",
+        "labels": {
+          "label-3": "value-4"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-11": "value-13"
+        },
+        "ports": [
+          {
+            "name": "http-80",
+            "port": 80,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-4",
+        "namespace": "namespace-3",
+        "labels": {
+          "label-11": "value-14",
+          "label-3": "value-4"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-11": "value-14",
+          "label-15": "value-16"
+        },
+        "ports": [
+          {
+            "name": "metrics",
+            "port": 8080,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-5",
+        "namespace": "namespace-3",
+        "labels": {
+          "label-11": "value-13",
+          "label-3": "value-4"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-11": "value-13",
+          "label-15": "value-16"
+        },
+        "ports": [
+          {
+            "name": "metrics",
+            "port": 8081,
+            "protocol": "TCP",
+            "targetPort": 8081
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-6",
+        "namespace": "namespace-4",
+        "labels": {
+          "label-3": "value-4",
+          "label-17": "value-18"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-17": "value-18"
+        },
+        "ports": [
+          {
+            "port": 443,
+            "protocol": "TCP",
+            "targetPort": "webhook-server"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-7",
+        "namespace": "namespace-5",
+        "labels": {}
+      },
+      "spec": {
+        "selector": {},
+        "ports": [
+          {
+            "port": 443,
+            "protocol": "TCP",
+            "targetPort": 444
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-8",
+        "namespace": "namespace-5",
+        "labels": {
+          "label-3": "value-4"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-11": "value-19"
+        },
+        "ports": [
+          {
+            "name": "https",
+            "port": 443,
+            "protocol": "TCP",
+            "targetPort": 9443
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-9",
+        "namespace": "namespace-6",
+        "labels": {
+          "label-20": "value-21",
+          "label-22": "value-23"
+        }
+      },
+      "spec": {
+        "selector": {},
+        "ports": [
+          {
+            "name": "https",
+            "port": 443,
+            "protocol": "TCP",
+            "targetPort": 6443
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-10",
+        "namespace": "namespace-7",
+        "labels": {
+          "label-24": "value-25",
+          "label-26": "value-16",
+          "label-27": "value-28",
+          "label-9": "value-29"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-24": "value-25"
+        },
+        "ports": [
+          {
+            "name": "dns",
+            "port": 53,
+            "protocol": "UDP",
+            "targetPort": 53
+          },
+          {
+            "name": "dns-tcp",
+            "port": 53,
+            "protocol": "TCP",
+            "targetPort": 53
+          },
+          {
+            "name": "metrics",
+            "port": 9153,
+            "protocol": "TCP",
+            "targetPort": 9153
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-11",
+        "namespace": "namespace-8",
+        "labels": {
+          "label-1": "value-30",
+          "label-3": "value-4",
+          "label-5": "value-30",
+          "label-7": "value-31"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-32": "value-33",
+          "label-1": "value-30"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 4000,
+            "protocol": "TCP",
+            "targetPort": "http"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-12",
+        "namespace": "namespace-8",
+        "labels": {
+          "label-1": "value-30",
+          "label-3": "value-4",
+          "label-5": "value-30",
+          "label-7": "value-31"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-32": "value-34",
+          "label-1": "value-30"
+        },
+        "ports": [
+          {
+            "name": "postgres",
+            "port": 5432,
+            "protocol": "TCP",
+            "targetPort": "postgres"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-13",
+        "namespace": "namespace-8",
+        "labels": {
+          "label-1": "value-30",
+          "label-3": "value-4",
+          "label-5": "value-30",
+          "label-7": "value-31"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-32": "value-35",
+          "label-1": "value-30"
+        },
+        "ports": [
+          {
+            "name": "redis",
+            "port": 6379,
+            "protocol": "TCP",
+            "targetPort": "redis"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-14",
+        "namespace": "namespace-9",
+        "labels": {
+          "label-1": "value-36",
+          "label-3": "value-4",
+          "label-5": "value-36",
+          "label-7": "value-37"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-1": "value-36",
+          "label-5": "value-36"
+        },
+        "ports": [
+          {
+            "name": "api",
+            "port": 9000,
+            "protocol": "TCP",
+            "targetPort": "api"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Service",
+      "metadata": {
+        "name": "resource-15",
+        "namespace": "namespace-9",
+        "labels": {
+          "label-1": "value-36",
+          "label-3": "value-4",
+          "label-5": "value-36",
+          "label-7": "value-37"
+        }
+      },
+      "spec": {
+        "selector": {
+          "label-1": "value-36",
+          "label-5": "value-36"
+        },
+        "ports": [
+          {
+            "name": "console",
+            "port": 9001,
+            "protocol": "TCP",
+            "targetPort": "console"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-16",
+        "namespace": "namespace-1",
+        "labels": {
+          "label-1": "value-2",
+          "label-5": "value-6",
+          "label-38": "value-39"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "example.invalid/app:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-17",
+        "namespace": "namespace-5",
+        "labels": {
+          "label-11": "value-19",
+          "label-38": "value-40"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "example.invalid/app:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Pending",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "False"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "False"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-18",
+        "namespace": "namespace-7",
+        "labels": {
+          "label-24": "value-25",
+          "label-38": "value-41"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "example.invalid/app:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-19",
+        "namespace": "namespace-8",
+        "labels": {
+          "label-32": "value-33",
+          "label-1": "value-30",
+          "label-38": "value-42"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "example.invalid/app:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-20",
+        "namespace": "namespace-8",
+        "labels": {
+          "label-32": "value-34",
+          "label-1": "value-30",
+          "label-43": "value-44",
+          "label-45": "value-46",
+          "label-47": "value-48"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "postgres:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-21",
+        "namespace": "namespace-8",
+        "labels": {
+          "label-32": "value-35",
+          "label-1": "value-30",
+          "label-38": "value-49"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "redis:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "resource-22",
+        "namespace": "namespace-9",
+        "labels": {
+          "label-1": "value-36",
+          "label-5": "value-36",
+          "label-38": "value-50"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "example.invalid/app:fixture",
+            "name": "container-1"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True"
+          },
+          {
+            "type": "Initialized",
+            "status": "True"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True"
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True"
+          }
+        ]
+      }
+    }
+  ]
+}

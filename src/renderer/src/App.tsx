@@ -178,7 +178,7 @@ function renderPanel(
     <PluginSurface plugin={p}>{content}</PluginSurface>
   )
   if (p.panel.scope === 'app') {
-    return surface(createElement(p.panel.Component as ComponentType<AppPanelProps>, { runtime }))
+    return surface(createElement(p.panel.Component as ComponentType<AppPanelProps>, { runtime, active }))
   }
   if (!session) {
     return surface(
